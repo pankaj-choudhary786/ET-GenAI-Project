@@ -1,0 +1,98 @@
+import React from 'react';
+import { Activity, ShieldAlert, Cpu, CheckCircle2, Clock, Filter, Download } from 'lucide-react';
+import clsx from 'clsx';
+
+const LOGS = [];
+
+export default function AgentActivity() {
+  return (
+    <div className="h-full flex flex-col max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Activity className="w-6 h-6 text-[#00A4BD]" /> Global Agent Log
+          </h1>
+          <p className="text-slate-500 mt-1">Real-time inference and execution logs across all tenants.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+         <div className="lg:col-span-1">
+            <AgentSkillRadar />
+         </div>
+         <div className="lg:col-span-2 bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-900 rounded-xl p-8 text-white shadow-lg shadow-purple-900/20 flex flex-col justify-center relative overflow-hidden border border-slate-800">
+            <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-fuchsia-500/20 blur-[60px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-[-20%] left-[-10%] w-64 h-64 bg-cyan-500/20 blur-[60px] rounded-full pointer-events-none"></div>
+            
+            <h3 className="font-bold text-slate-300 text-sm uppercase tracking-wider mb-3">Total Platform Tokens Synthesized</h3>
+            <div className="text-6xl font-black mb-3 tracking-tighter">-</div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold text-xs ring-1 ring-inset ring-emerald-500/30">-</span>
+              <span className="text-slate-400 font-medium text-sm">since last login</span>
+            </div>
+         </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col flex-1">
+        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <input type="text" placeholder="Search logs by tenant or request ID..." className="w-80 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#00A4BD] outline-none" />
+            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 font-medium rounded-lg text-sm hover:bg-slate-50 transition-colors">
+              <Filter className="w-4 h-4" /> Filters
+            </button>
+          </div>
+          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-50 transition-colors shadow-sm">
+             <Download className="w-4 h-4" /> Export Logs
+          </button>
+        </div>
+
+        <div className="overflow-x-auto flex-1 font-mono text-xs">
+          <table className="w-full text-left whitespace-nowrap">
+            <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
+              <tr>
+                <th className="px-6 py-3">Timestamp</th>
+                <th className="px-6 py-3">Req ID</th>
+                <th className="px-6 py-3">Tenant</th>
+                <th className="px-6 py-3">Agent Group</th>
+                <th className="px-6 py-3">Action Details</th>
+                <th className="px-6 py-3">Duration</th>
+                <th className="px-6 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800 bg-slate-950 text-slate-300">
+              {LOGS.map((log) => (
+                <tr key={log.id} className="hover:bg-slate-800/80 transition-colors">
+                  <td className="px-6 py-3 border-r border-slate-800/50 text-slate-500">{log.time}</td>
+                  <td className="px-6 py-3 border-r border-slate-800/50 text-[#00A4BD]">{log.id}</td>
+                  <td className="px-6 py-3 border-r border-slate-800/50 text-purple-400">{log.tenant}</td>
+                  <td className="px-6 py-3 border-r border-slate-800/50 font-bold text-slate-200">{log.agent}</td>
+                  <td className="px-6 py-3 border-r border-slate-800/50 truncate max-w-sm" title={log.action}>{log.action}</td>
+                  <td className="px-6 py-3 border-r border-slate-800/50 text-slate-500">{log.ms}</td>
+                  <td className="px-6 py-3">
+                     <span className={clsx(
+                       "flex items-center gap-1.5 font-bold uppercase tracking-widest text-[10px]",
+                       log.status === 'completed' ? "text-emerald-400" :
+                       log.status === 'failed' ? "text-rose-500" :
+                       log.status === 'flagged' ? "text-amber-400" :
+                       "text-blue-400 animate-pulse"
+                     )}>
+                       {log.status === 'completed' && <CheckCircle2 className="w-3 h-3"/>}
+                       {log.status === 'failed' && <ShieldAlert className="w-3 h-3"/>}
+                       {log.status === 'flagged' && <AlertTriangle className="w-3 h-3" />}
+                       {log.status === 'processing' && <Clock className="w-3 h-3"/>}
+                       {log.status}
+                     </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Needed imports omitted earlier
+import { AlertTriangle } from 'lucide-react';
+import { AgentSkillRadar } from '../../components/charts/AdminCharts';

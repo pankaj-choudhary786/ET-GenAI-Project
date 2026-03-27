@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-nexus-primary: #00A4BD;
+  --color-nexus-secondary: #FF7A59;
+  --color-nexus-dark: #33475B;
+  --color-nexus-light: #F5F8FA;
+  --color-nexus-border: #EAF0F6;
+  
+  --color-slate-800: #2d3748;
+  --color-slate-600: #4a5568;
+  --color-slate-500: #718096;
+  
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-nexus-dark antialiased font-sans m-0 p-0;
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .shadow-soft {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  }
+  .shadow-card {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  }
+}
+
+@keyframes scrollX {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: scrollX 35s linear infinite;
+  display: flex;
+  width: max-content;
+}
