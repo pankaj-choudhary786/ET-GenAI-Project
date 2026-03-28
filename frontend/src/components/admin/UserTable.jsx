@@ -3,6 +3,8 @@ import Avatar from '../ui/Avatar';
 import clsx from 'clsx';
 import { MoreHorizontal, Download, Filter } from 'lucide-react';
 import { useAdminUsers } from '../../hooks/useAdminUsers';
+import client from '../../api/client';
+import { useStore } from '../../store/useStore';
 
 function StatusBadge({ status }) {
   return (
@@ -33,11 +35,38 @@ function PlanBadge({ plan }) {
 export default function UserTable({ showControls = false }) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const { users, pagination, loading } = useAdminUsers(page, 10, search);
+  const addToast = useStore(state => state.addToast);
+  const { users, pagination, loading, refetch } = useAdminUsers(page, 10, search);
 
   const handleSearchChange = (e) => {
       setSearch(e.target.value);
       setPage(1); // reset to page 1 on search
+  };
+
+  const handleToggleStatus = async (userId, currentIsActive) => {
+    try {
+      await client.put(`/api/admin/users/${userId}/status`, { isActive: !currentIsActive });
+      addToast('success', `User status updated successfully`);
+      refetch();
+    } catch (err) {
+      addToast('error', 'Failed to update user status');
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (users.length === 0) return;
+    const headers = ['Name', 'Email', 'Company', 'Role', 'Status', 'Joined'];
+    const rows = users.map(u => [
+      u.name, u.email, u.company || '', u.role, u.isActive ? 'Active' : 'Suspended', new Date(u.createdAt).toLocaleDateString()
+    ]);
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `nexus_users_export_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    addToast('success', 'User list exported to CSV');
   };
 
   return (
@@ -63,7 +92,7 @@ export default function UserTable({ showControls = false }) {
               <Filter className="w-4 h-4" /> Filters
             </button>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-50 transition-colors shadow-sm">
+          <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-50 transition-colors shadow-sm">
              <Download className="w-4 h-4" /> Export CSV
           </button>
         </div>
@@ -104,12 +133,20 @@ export default function UserTable({ showControls = false }) {
                 <td className="px-6 py-4 capitalize font-medium text-slate-600">{user.role}</td>
                 <td className="px-6 py-4 text-slate-600 font-medium">{new Date(user.createdAt).toLocaleDateString()}</td>
                 {showControls && (
-                    <td className="px-6 py-4 text-right">
-                    <button className="p-1.5 text-slate-400 hover:text-[#00A4BD] hover:bg-[#00A4BD]/10 rounded transition-colors inline-block">
-                        <MoreHorizontal className="w-5 h-5" />
-                    </button>
-                    </td>
-                )}
+                     <td className="px-6 py-4 text-right relative group/actions">
+                        <button className="p-1.5 text-slate-400 hover:text-[#00A4BD] hover:bg-[#00A4BD]/10 rounded transition-colors inline-block peer">
+                            <MoreHorizontal className="w-5 h-5" />
+                        </button>
+                        <div className="hidden peer-hover:flex hover:flex flex-col absolute right-6 top-10 bg-white border border-slate-200 rounded-lg shadow-xl z-[100] min-w-[140px] overflow-hidden">
+                           <button onClick={() => handleToggleStatus(user._id, user.isActive)} className="px-4 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">
+                             {user.isActive ? 'Suspend Access' : 'Reactivate Access'}
+                           </button>
+                           <button className="px-4 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50">
+                             Delete User
+                           </button>
+                        </div>
+                     </td>
+                 )}
               </tr>
             ))}
             {users.length === 0 && !loading && (

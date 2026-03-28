@@ -1,20 +1,54 @@
 import React, { useState } from 'react';
 import { Play, Users, ShieldAlert, Swords, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
+import client from '../../api/client';
+import { useStore } from '../../store/useStore';
 
 const ACTIONS = [
-  { id: 'prospect', label: 'Run prospecting now', icon: Users, color: 'text-purple-600', bg: 'bg-purple-100' },
-  { id: 'scan', label: 'Scan pipeline for risks', icon: ShieldAlert, color: 'text-rose-600', bg: 'bg-rose-100' },
+  { id: 'prospecting', label: 'Run prospecting now', icon: Users, color: 'text-purple-600', bg: 'bg-purple-100' },
+  { id: 'dealIntel', label: 'Scan pipeline for risks', icon: ShieldAlert, color: 'text-rose-600', bg: 'bg-rose-100' },
   { id: 'retention', label: 'Check retention scores', icon: Play, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-  { id: 'battlecard', label: 'Refresh battlecards', icon: Swords, color: 'text-amber-600', bg: 'bg-amber-100' }
+  { id: 'competitive', label: 'Refresh battlecards', icon: Swords, color: 'text-amber-600', bg: 'bg-amber-100' }
 ];
 
 export default function QuickActions() {
   const [running, setRunning] = useState(null);
+  const addToast = useStore(state => state.addToast);
 
-  const handleRun = (id) => {
-    setRunning(id);
-    setTimeout(() => setRunning(null), 2000);
+  const handleRun = async (agentType) => {
+    const endpoints = {
+      prospecting: '/api/prospects/run-agent',
+      dealIntel: '/api/deals/scan',
+      retention: '/api/retention/scan',
+      competitive: '/api/battlecards/refresh/all'
+    };
+    const labels = {
+      prospecting: 'Prospecting agent',
+      dealIntel: 'Deal Intelligence agent',
+      retention: 'Retention agent',
+      competitive: 'Competitive Intel agent'
+    };
+    
+    setRunning(agentType);
+    addToast('info', `${labels[agentType]} started...`);
+    
+    try {
+      if (agentType === 'competitive') {
+          // Placeholder for competitive refresh all if not implemented, 
+          // but following prompt's logic 
+          await client.post(endpoints[agentType]);
+      } else {
+          await client.post(endpoints[agentType]);
+      }
+      
+      setTimeout(() => {
+        setRunning(null);
+        addToast('success', `${labels[agentType]} completed`);
+      }, 5000); // UI feedback delay
+    } catch (err) {
+      setRunning(null);
+      addToast('error', `Failed to start ${labels[agentType]}`);
+    }
   };
 
   return (

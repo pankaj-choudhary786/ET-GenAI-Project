@@ -6,6 +6,7 @@ import { LeadSourcesChart } from '../../components/charts/AgentCharts';
 import { useProspects } from '../../hooks/useProspects';
 import client from '../../api/client';
 import { useStore } from '../../store/useStore';
+import AddProspectModal from '../../components/modals/AddProspectModal';
 
 function ICPConfigurator() {
   const [isOpen, setIsOpen] = useState(false);
@@ -118,9 +119,20 @@ function ProspectDrawer({ prospect, isOpen, onClose }) {
     try {
       await client.post(`/api/prospects/${prospect._id}/approve-email`, { sequenceIndex: seqIndex });
       addToast('success', 'Email approved and sent.');
-      onClose(); // In a real app we'd reload the sequence or prospect, but closing is an easy UX here.
-    } catch {
-      addToast('error', 'Failed to approve email.');
+      onClose();
+    } catch (err) {
+      addToast('error', err.response?.data?.message || 'Failed to approve email.');
+    }
+  };
+
+  const handleDrop = async () => {
+    if (!window.confirm(`Remove ${prospect.company} from prospects?`)) return;
+    try {
+      await client.delete(`/api/prospects/${prospect._id}`);
+      addToast('success', 'Prospect removed');
+      onClose();
+    } catch (err) {
+      addToast('error', 'Failed to remove prospect');
     }
   };
 
@@ -199,7 +211,7 @@ function ProspectDrawer({ prospect, isOpen, onClose }) {
                         </p>
                         {isDraft && (
                             <div className="flex justify-end gap-2 pt-3 border-t border-slate-50">
-                                <button className="p-2 text-rose-500 hover:bg-rose-50 rounded transition-colors"><X className="w-4 h-4"/></button>
+                                <button onClick={handleDrop} className="p-2 text-rose-500 hover:bg-rose-50 rounded transition-colors"><X className="w-4 h-4"/></button>
                                 <button className="flex items-center gap-2 px-4 py-1.5 bg-[#00A4BD] hover:bg-[#008f9c] text-white font-bold text-sm rounded transition-colors shadow-sm" onClick={() => handleApprove(seqNum)}>
                                 <Check className="w-4 h-4" /> Approve Step
                                 </button>
@@ -240,16 +252,38 @@ export default function Prospecting() {
     qualified: prospects.filter(p => p.status === 'qualified')
   };
 
+  const [showAddModal, setShowAddModal] = useState(false);
+
   const handleRunAgent = async () => {
+    setAgentLoading(true);
+    addToast('info', 'Prospecting agent started — checking for new targets...');
     try {
-        setAgentLoading(true);
-        await client.post('/api/prospects/run-agent');
-        addToast('success', 'Prospecting Agent is running. Data will appear shortly.');
-        setTimeout(refetch, 3000); // Simple hack to wait to fetch
-    } catch {
-        addToast('error', 'Failed to start agent');
-    } finally {
-        setAgentLoading(false);
+      await client.post('/api/prospects/run-agent');
+      // Poll every 5 seconds for 60 seconds then fetch final results
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        await refetch();
+        if (attempts >= 12) {
+          clearInterval(poll);
+          setAgentLoading(false);
+          addToast('success', 'Prospecting agent completed — new prospects loaded');
+        }
+      }, 5000);
+    } catch (err) {
+      setAgentLoading(false);
+      addToast('error', 'Failed to start agent: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleAddProspect = async (formData) => {
+    try {
+      await client.post('/api/prospects/manual', formData);
+      addToast('success', `${formData.company} added successfully`);
+      setShowAddModal(false);
+      refetch();
+    } catch (err) {
+      addToast('error', err.response?.data?.message || 'Failed to add prospect');
     }
   };
 
@@ -260,10 +294,18 @@ export default function Prospecting() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Prospecting Engine</h1>
           <p className="text-slate-500 mt-1">Autonomous outbound pipeline generation based on your ICP.</p>
         </div>
-        <button onClick={handleRunAgent} disabled={agentLoading} className="px-5 py-2.5 bg-[#FF7A59] hover:bg-[#ff6a45] disabled:opacity-50 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
-          {agentLoading ? <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div> : <Send className="w-4 h-4" />}
-          Run Prospecting Agent
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowAddModal(true)} 
+            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            Add Prospect Manually
+          </button>
+          <button onClick={handleRunAgent} disabled={agentLoading} className="px-5 py-2.5 bg-[#FF7A59] hover:bg-[#ff6a45] disabled:opacity-50 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
+            {agentLoading ? <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div> : <Send className="w-4 h-4" />}
+            Run Prospecting Agent
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -318,6 +360,13 @@ export default function Prospecting() {
         isOpen={!!selectedProspect} 
         onClose={() => { setSelectedProspect(null); refetch(); }} 
       />
+
+      {showAddModal && (
+        <AddProspectModal 
+          onClose={() => setShowAddModal(false)} 
+          onSubmit={handleAddProspect} 
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import Prospect from '../models/Prospect.js';
+import AgentEvent from '../models/AgentEvent.js';
 import BehaviorEvent from '../models/BehaviorEvent.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
@@ -116,6 +117,70 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req, res) => {
   );
   
   res.json({ success: true, message: 'Prospect removed' });
+}));
+
+// POST /api/prospects/manual — create prospect manually without AI scoring
+router.post('/manual', authMiddleware, asyncHandler(async (req, res) => {
+  const { company, domain, contactName, contactTitle, contactEmail, linkedinUrl, industry, employeeCount, notes } = req.body;
+  
+  if (!company || !contactEmail) {
+    return res.status(400).json({ success: false, message: 'Company name and contact email are required' });
+  }
+  
+  const existing = await Prospect.findOne({ contactEmail, userId: req.user.userId });
+  if (existing) {
+    return res.status(400).json({ success: false, message: 'A prospect with this email already exists' });
+  }
+
+  // Use Claude to generate a quick ICP score for manually added prospect
+  let icpScore = 70; // default score for manually added
+  let fitReason = 'Manually added prospect';
+  let outreachSequences = [];
+  
+  try {
+    const scoreResult = await callClaude(
+      'You are a B2B sales ICP scoring expert.',
+      `Score this manually added prospect (0-100) and generate a 3-email outreach sequence.
+       Company: ${company}, Industry: ${industry || 'Unknown'}, Size: ${employeeCount || 'Unknown'}, 
+       Contact: ${contactName} (${contactTitle || 'Unknown role'}), Notes: ${notes || 'None'}.
+       Return JSON: { 
+         "score": 0-100, 
+         "reason": "explanation",
+         "emails": [{"subject":"","body":"","sendDelay":"Day 1"},{"subject":"","body":"","sendDelay":"Day 4"},{"subject":"","body":"","sendDelay":"Day 8"}]
+       }`,
+      true
+    );
+    icpScore = scoreResult.score;
+    fitReason = scoreResult.reason;
+    outreachSequences = (scoreResult.emails || []).map((e, i) => ({
+      ...e, index: i, approved: false, sent: false
+    }));
+  } catch (llmErr) {
+    console.error('LLM scoring failed for manual prospect, using defaults:', llmErr.message);
+  }
+
+  const prospect = await Prospect.create({
+    company, domain, contactName, contactTitle, contactEmail, linkedinUrl,
+    industry, employeeCount, notes,
+    userId: req.user.userId,
+    status: 'scored',
+    icpScore,
+    fitReason,
+    outreachSequences,
+    addedManually: true
+  });
+
+  await AgentEvent.create({
+    agentType: 'prospecting',
+    userId: req.user.userId,
+    action: 'manual_add',
+    entityType: 'prospect',
+    entityId: prospect._id,
+    outputSummary: `Manually added prospect: ${company} (${contactName}) — ICP score ${icpScore}`,
+    status: 'success'
+  });
+
+  res.status(201).json({ success: true, prospect });
 }));
 
 export default router;

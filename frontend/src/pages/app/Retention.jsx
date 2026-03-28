@@ -7,6 +7,7 @@ import { NetRevenueRetentionChart } from '../../components/charts/AgentCharts';
 import { useRetentionAccounts } from '../../hooks/useRetentionAccounts';
 import client from '../../api/client';
 import { useStore } from '../../store/useStore';
+import AddAccountModal from '../../components/modals/AddAccountModal';
 
 function SparklineCell({ data, color }) {
   if (!data || data.length === 0) return <div className="text-slate-400 text-xs">N/A</div>;
@@ -32,6 +33,9 @@ function SparklineCell({ data, color }) {
 function AccountDrawer({ account, isOpen, onClose }) {
   const [history, setHistory] = useState([]);
   
+  const addToast = useStore(state => state.addToast);
+  const [submitting, setSubmitting] = useState(false);
+  
   useEffect(() => {
      if (isOpen && account) {
          client.get(`/api/retention/accounts/${account._id}`)
@@ -39,6 +43,19 @@ function AccountDrawer({ account, isOpen, onClose }) {
            .catch(() => {});
      }
   }, [isOpen, account]);
+
+  const handleApplyIntervention = async (type) => {
+    setSubmitting(true);
+    try {
+      await client.post(`/api/retention/accounts/${account._id}/intervene`, { type });
+      addToast('success', `Intervention (${type}) dispatched successfully`);
+      onClose();
+    } catch (err) {
+      addToast('error', 'Failed to dispatch intervention');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!account) return null;
 
@@ -98,7 +115,7 @@ function AccountDrawer({ account, isOpen, onClose }) {
         )}
 
         {/* Intervention Status */}
-        {account.interventionStatus && (
+        {account.interventionStatus ? (
           <div>
             <h4 className="font-bold text-slate-800 mb-3 tracking-tight">AI Intervention Playbook</h4>
             <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-4">
@@ -108,6 +125,21 @@ function AccountDrawer({ account, isOpen, onClose }) {
                <p className="text-sm text-emerald-800/80 mb-4 font-medium">
                  The AI agent dispatched an automated action targeting this account to mitigate risk.
                </p>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <h4 className="font-bold text-slate-800 mb-3 tracking-tight">Manual Intervention Play</h4>
+            <div className="grid grid-cols-3 gap-3">
+              <button disabled={submitting} onClick={() => handleApplyIntervention('nudge')} className="p-3 border rounded-xl hover:bg-slate-50 transition-colors text-center text-xs font-bold text-slate-600">
+                Send Nudge
+              </button>
+              <button disabled={submitting} onClick={() => handleApplyIntervention('offer')} className="p-3 border rounded-xl hover:bg-slate-50 transition-colors text-center text-xs font-bold text-amber-600">
+                Send Offer
+              </button>
+              <button disabled={submitting} onClick={() => handleApplyIntervention('escalate')} className="p-3 border rounded-xl hover:bg-slate-50 transition-colors text-center text-xs font-bold text-rose-600">
+                Escalate
+              </button>
             </div>
           </div>
         )}
@@ -123,17 +155,38 @@ export default function Retention() {
   const [agentLoading, setAgentLoading] = useState(false);
   const addToast = useStore(state => state.addToast);
 
+  const [showAddModal, setShowAddModal] = useState(false);
+
   const handleScan = async () => {
-      try {
-          setAgentLoading(true);
-          await client.post('/api/retention/scan');
-          addToast('success', 'Retention scan started.');
-          setTimeout(refetch, 3000);
-      } catch {
-          addToast('error', 'Failed to scan');
-      } finally {
+    setAgentLoading(true);
+    addToast('info', 'Retention agent started — calculating churn scores...');
+    try {
+      await client.post('/api/retention/scan');
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        await refetch();
+        if (attempts >= 12) {
+          clearInterval(poll);
           setAgentLoading(false);
-      }
+          addToast('success', 'Retention scan completed');
+        }
+      }, 5000);
+    } catch (err) {
+      setAgentLoading(false);
+      addToast('error', 'Failed to scan');
+    }
+  };
+
+  const handleAddAccount = async (formData) => {
+    try {
+      await client.post('/api/retention/accounts/manual', formData);
+      addToast('success', `${formData.companyName} added to monitoring`);
+      setShowAddModal(false);
+      refetch();
+    } catch (err) {
+      addToast('error', 'Failed to add account');
+    }
   };
 
   const healthyStats = accounts.filter(a => a.churnScore < 40).length;
@@ -146,10 +199,18 @@ export default function Retention() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Customer Retention</h1>
           <p className="text-slate-500 mt-1">Predicting and preventing churn before it happens.</p>
         </div>
-        <button onClick={handleScan} disabled={agentLoading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
-            {agentLoading ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div> : <Activity className="w-4 h-4" />}
-            Scan Account Telemetry
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowAddModal(true)} 
+            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            Add Account Manually
+          </button>
+          <button onClick={handleScan} disabled={agentLoading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
+              {agentLoading ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div> : <Activity className="w-4 h-4" />}
+              Scan Account Telemetry
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -249,7 +310,14 @@ export default function Retention() {
         </div>
       </div>
       
-      <AccountDrawer account={selectedAccount} isOpen={!!selectedAccount} onClose={() => setSelectedAccount(null)} />
+      <AccountDrawer account={selectedAccount} isOpen={!!selectedAccount} onClose={() => { setSelectedAccount(null); refetch(); }} />
+
+      {showAddModal && (
+        <AddAccountModal 
+          onClose={() => setShowAddModal(false)} 
+          onSubmit={handleAddAccount} 
+        />
+      )}
     </div>
   );
 }

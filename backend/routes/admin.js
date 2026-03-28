@@ -104,4 +104,13 @@ router.get('/agent-log', asyncHandler(async (req, res) => {
   });
 }));
 
+// PUT /api/admin/users/:id/status
+router.put('/users/:id/status', asyncHandler(async (req, res) => {
+  const { isActive } = req.body;
+  const user = await User.findByIdAndUpdate(req.params.id, { isActive }, { new: true }).select('-password');
+  if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+  
+  res.json({ success: true, user, message: `User status updated to ${isActive ? 'Active' : 'Suspended'}` });
+}));
+
 export default router;

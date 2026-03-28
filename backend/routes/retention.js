@@ -73,4 +73,27 @@ router.post('/accounts/:id/intervene', asyncHandler(async (req, res) => {
   });
 }));
 
+router.post('/accounts/manual', asyncHandler(async (req, res) => {
+  const { companyName, contractValue, plan, contactEmail, loginLast7d, loginLast30d, featureAdoptionPct, supportTickets30d } = req.body;
+  
+  if (!companyName) return res.status(400).json({ success: false, message: 'Company name is required' });
+  
+  const account = await ChurnSignal.create({
+    userId: req.user.userId,
+    accountId: uuidv4(),
+    companyName, contractValue: contractValue || 0,
+    plan: plan || 'standard', contactEmail,
+    loginLast7d: loginLast7d || 0,
+    loginLast30d: loginLast30d || 0,
+    featureAdoptionPct: featureAdoptionPct || 50,
+    supportTickets30d: supportTickets30d || 0,
+    sentimentScore: 0,
+    churnScore: 0,
+    interventionStatus: 'none',
+    addedManually: true
+  });
+  
+  res.status(201).json({ success: true, account });
+}));
+
 export default router;

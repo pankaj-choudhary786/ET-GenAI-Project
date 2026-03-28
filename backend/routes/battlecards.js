@@ -68,4 +68,19 @@ router.post('/:id/push-to-deals', asyncHandler(async (req, res) => {
   res.json({ success: true, dealsUpdated: deals.length });
 }));
 
+// POST /api/battlecards — add new competitor
+router.post('/', asyncHandler(async (req, res) => {
+  const { competitor } = req.body;
+  if (!competitor) return res.status(400).json({ success: false, message: 'Competitor name is required' });
+  
+  let card = await Battlecard.findOne({ competitor, userId: req.user.userId });
+  if (card) return res.status(400).json({ success: false, message: 'Competitor already exists' });
+  
+  // Create shell then trigger agent or just run agent which creates it 
+  await runCompetitiveAgent(competitor, req.user.userId);
+  card = await Battlecard.findOne({ competitor, userId: req.user.userId });
+  
+  res.status(201).json({ success: true, battlecard: card });
+}));
+
 export default router;

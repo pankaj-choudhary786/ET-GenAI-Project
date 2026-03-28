@@ -16,16 +16,6 @@ router.get('/', asyncHandler(async (req, res) => {
   const query = { userId: req.user.userId };
   if (req.query.stage) query.stage = req.query.stage;
   
-  const fetchedDeals = await Deal.find(query).sort({ createdAt: -1 }).lean();
-  
-  if (req.query.riskMin) {
-    const min = parseInt(req.query.riskMin, 10);
-    if (!isNaN(min)) {
-       // Filter post-fetch if filtering is easier, or convert to mongoose.
-       // However MongoDB is fine for raw queries but let's do it right.
-    }
-  }
-
   const dealsQuery = Deal.find(query).sort({ createdAt: -1 });
   if (req.query.riskMin) {
     dealsQuery.where('riskScore').gte(parseInt(req.query.riskMin, 10));

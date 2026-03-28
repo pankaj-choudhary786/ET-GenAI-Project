@@ -7,6 +7,7 @@ import { PipelineStageChart } from '../../components/charts/AgentCharts';
 import { useDeals } from '../../hooks/useDeals';
 import client from '../../api/client';
 import { useStore } from '../../store/useStore';
+import AddDealModal from '../../components/modals/AddDealModal';
 
 function RiskBadge({ score }) {
   const status = score >= 70 ? 'critical' : score >= 40 ? 'warning' : 'healthy';
@@ -165,17 +166,38 @@ export default function Pipeline() {
   const totalValue = deals.reduce((acc, curr) => acc + (curr.value || 0), 0);
   const atRiskCount = deals.filter(d => d.riskScore > 40).length;
 
+  const [showAddModal, setShowAddModal] = useState(false);
+
   const handleRunAgent = async () => {
-     try {
-         setAgentLoading(true);
-         await client.post('/api/deals/scan');
-         addToast('success', 'Deal Intelligence Agent started scanning process.');
-         setTimeout(refetch, 3000);
-     } catch {
-         addToast('error', 'Failed to start scan.');
-     } finally {
-         setAgentLoading(false);
-     }
+    setAgentLoading(true);
+    addToast('info', 'Deal Intelligence agent started — scanning pipeline for risks...');
+    try {
+      await client.post('/api/deals/scan');
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        await refetch();
+        if (attempts >= 12) {
+          clearInterval(poll);
+          setAgentLoading(false);
+          addToast('success', 'Pipeline scan completed');
+        }
+      }, 5000);
+    } catch (err) {
+      setAgentLoading(false);
+      addToast('error', 'Failed to start scan: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleAddDeal = async (formData) => {
+    try {
+      await client.post('/api/deals', formData);
+      addToast('success', `${formData.company} added to pipeline`);
+      setShowAddModal(false);
+      refetch();
+    } catch (err) {
+      addToast('error', err.response?.data?.message || 'Failed to add deal');
+    }
   };
 
   return (
@@ -185,10 +207,18 @@ export default function Pipeline() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Deal Intelligence</h1>
           <p className="text-slate-500 mt-1">AI analyzing all active deals for risk vectors.</p>
         </div>
-        <button onClick={handleRunAgent} disabled={agentLoading} className="px-5 py-2.5 bg-[#00A4BD] hover:bg-[#008f9c] disabled:opacity-50 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
-            {agentLoading ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div> : <Activity className="w-4 h-4" />}
-            Scan Active Pipeline
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowAddModal(true)} 
+            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            Add Deal Manually
+          </button>
+          <button onClick={handleRunAgent} disabled={agentLoading} className="px-5 py-2.5 bg-[#00A4BD] hover:bg-[#008f9c] disabled:opacity-50 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
+              {agentLoading ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div> : <Activity className="w-4 h-4" />}
+              Scan Active Pipeline
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -260,6 +290,13 @@ export default function Pipeline() {
       </div>
       
       <RecoveryModal deal={selectedDeal} isOpen={!!selectedDeal} onClose={() => { setSelectedDeal(null); refetch(); }} />
+
+      {showAddModal && (
+        <AddDealModal 
+          onClose={() => setShowAddModal(false)} 
+          onSubmit={handleAddDeal} 
+        />
+      )}
     </div>
   );
 }

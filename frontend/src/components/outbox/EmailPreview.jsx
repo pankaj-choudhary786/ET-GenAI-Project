@@ -3,15 +3,15 @@ import { Send, Edit3, RefreshCw, Trash2, Info, CheckCircle2 } from 'lucide-react
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 
-export default function EmailPreview({ draft, onApprove, onDiscard }) {
+export default function EmailPreview({ draft, onApprove, onDiscard, onRegenerate }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [bodyText, setBodyText] = useState(draft?.body || '');
+  const [bodyText, setBodyText] = useState(draft?.content || '');
   const [regenNotes, setRegenNotes] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
   
   // Reset state when draft changes
   React.useEffect(() => {
-    setBodyText(draft?.body || '');
+    setBodyText(draft?.content || '');
     setIsEditing(false);
     setRegenNotes('');
   }, [draft]);
@@ -24,13 +24,16 @@ export default function EmailPreview({ draft, onApprove, onDiscard }) {
     );
   }
 
-  const handleRegenerate = () => {
+  const handleRegenerate = async () => {
+    if (!regenNotes.trim()) return;
     setIsRegenerating(true);
-    setTimeout(() => {
-      setIsRegenerating(false);
-      setBodyText("Here is the revised version of the email making it shorter and more direct, as requested.\n\n" + bodyText);
+    try {
+      const newBody = await onRegenerate(draft.id, regenNotes);
+      if (newBody) setBodyText(newBody);
       setRegenNotes('');
-    }, 1500);
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   return (

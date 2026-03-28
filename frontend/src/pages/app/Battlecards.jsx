@@ -4,6 +4,7 @@ import { Swords, Share, Shield, Target, Plus, ChevronDown, ChevronRight, Newspap
 import { useBattlecards } from '../../hooks/useBattlecards';
 import client from '../../api/client';
 import { useStore } from '../../store/useStore';
+import AddCompetitorModal from '../../components/modals/AddCompetitorModal';
 
 function ObjectionAccordion({ objections }) {
   const [openIndex, setOpenIndex] = useState(0);
@@ -36,6 +37,12 @@ function ObjectionAccordion({ objections }) {
           )}
         </div>
       ))}
+      {showAddModal && (
+        <AddCompetitorModal 
+          onClose={() => setShowAddModal(false)} 
+          onSubmit={handleAddCompetitor} 
+        />
+      )}
     </div>
   );
 }
@@ -55,25 +62,42 @@ export default function Battlecards() {
 
   const activeCompetitor = battlecards.find(c => c._id === selectedId);
 
+  const [showAddModal, setShowAddModal] = useState(false);
+
   const handleRefresh = async () => {
      if (!activeCompetitor) return;
      try {
         setRefreshing(true);
+        addToast('info', `Agent recon started for ${activeCompetitor.competitor}...`);
         await client.post(`/api/battlecards/refresh/${activeCompetitor.competitor}`);
-        addToast('success', `Refreshed battlecard for ${activeCompetitor.competitor}`);
-        refetch();
-     } catch {
-        addToast('error', 'Failed to refresh battlecard');
-     } finally {
+        setTimeout(() => {
+          setRefreshing(false);
+          addToast('success', `Battlecard for ${activeCompetitor.competitor} updated`);
+          refetch();
+        }, 3000);
+     } catch (err) {
         setRefreshing(false);
+        addToast('error', 'Recon failed');
      }
+  };
+
+  const handleAddCompetitor = async (name) => {
+    try {
+      addToast('info', `Starting reconnaissance on ${name}...`);
+      await client.post('/api/battlecards', { competitor: name });
+      addToast('success', `${name} battlecard generated!`);
+      setShowAddModal(false);
+      refetch();
+    } catch (err) {
+      addToast('error', err.response?.data?.message || 'Failed to add competitor');
+    }
   };
 
   const handlePushToDeals = async () => {
     if (!activeCompetitor) return;
     try {
-       await client.post(`/api/battlecards/${activeCompetitor._id}/push-to-deals`);
-       addToast('success', `Battlecard intel pushed to relevant deals.`);
+       const { data } = await client.post(`/api/battlecards/${activeCompetitor._id}/push-to-deals`);
+       addToast('success', `Battlecard intel pushed to ${data.dealsUpdated} active deals.`);
     } catch {
        addToast('error', 'Failed to push to deals');
     }
@@ -97,9 +121,9 @@ export default function Battlecards() {
         
         {/* Competitor Sidebar */}
         <div className="w-72 border-r border-slate-200 bg-slate-50 flex flex-col">
-          <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+          <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-100/50">
              <h3 className="font-bold text-slate-800 tracking-tight">Tracked Targets</h3>
-             <button className="text-slate-400 hover:text-[#00A4BD] transition-colors"><Plus className="w-5 h-5"/></button>
+             <button onClick={() => setShowAddModal(true)} className="text-[#00A4BD] hover:text-[#008f9c] transition-colors p-1 bg-white rounded-md border border-slate-200"><Plus className="w-5 h-5"/></button>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {battlecards.map(comp => (

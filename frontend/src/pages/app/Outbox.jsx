@@ -114,15 +114,37 @@ export default function Outbox() {
     const draft = drafts.find(d => d.id === id);
     if (!draft) return;
     
-    // Actually we could just resolve the deal or drop the prospect sequence, but we map simple delete visually.
-    if (draft.type === 'deal') {
-       await client.put(`/api/deals/${draft.entityId}/resolve`);
-       addToast('info', 'Recovery play discarded.');
-       refetchDeals();
-    } else {
-       addToast('info', 'Prospect draft discarded locally.');
-       setDrafts(prev => prev.filter(d => d.id !== id));
-       setSelectedId(null);
+    try {
+      if (draft.type === 'deal') {
+         await client.put(`/api/deals/${draft.entityId}/resolve`);
+         addToast('info', 'Recovery play discarded.');
+         refetchDeals();
+      } else {
+         addToast('info', 'Prospect draft discarded.');
+         // For prospects, we might want to mark the sequence as discarded in DB.
+         // For now, let's just filter it out of the local view.
+         setDrafts(prev => prev.filter(d => d.id !== id));
+      }
+      setSelectedId(null);
+    } catch (err) {
+      addToast('error', 'Failed to discard draft');
+    }
+  };
+
+  const handleRegenerate = async (id, guidance) => {
+    const draft = drafts.find(d => d.id === id);
+    if (!draft || draft.type !== 'prospect') return;
+
+    try {
+      const { data } = await client.post(`/api/prospects/${draft.entityId}/regenerate-email`, {
+        sequenceIndex: draft.sequenceIndex,
+        guidance
+      });
+      addToast('success', 'Email regenerated with AI');
+      refetchProspects();
+      return data.prospect.outreachSequences.find(s => s.index === draft.sequenceIndex)?.body;
+    } catch (err) {
+      addToast('error', 'Failed to regenerate email');
     }
   };
 
@@ -164,6 +186,7 @@ export default function Outbox() {
           draft={selectedDraft}
           onApprove={(id) => handleApprove(id, selectedDraft.content)}
           onDiscard={handleDiscard}
+          onRegenerate={handleRegenerate}
         />
       </div>
     </div>

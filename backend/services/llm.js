@@ -4,7 +4,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export async function callClaude(systemPrompt, userPrompt, expectJson = false) {
   try {
     const message = await client.messages.create({
-      model: 'claude-opus-4-5',
+      model: 'claude-3-5-sonnet-20240620',
       max_tokens: 2048,
       system: expectJson 
         ? systemPrompt + '\n\nCRITICAL: Respond ONLY with valid JSON. No markdown, no explanation, no backticks. Raw JSON only.'
