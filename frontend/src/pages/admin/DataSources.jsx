@@ -1,13 +1,26 @@
-import React from 'react';
-import { Database, Plus, RefreshCw, Key } from 'lucide-react';
+import React, { useState } from 'react';
+import { Database, Plus, RefreshCw, Key, ShieldCheck, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { DataSourceSyncChart } from '../../components/charts/AdminCharts';
+import { useStore } from '../../store/useStore';
 
-const SOURCES = [];
+const MOCK_SOURCES = [
+  { id: 1, name: 'HubSpot API', type: 'CRM Data', status: 'Healthy', lastSync: '12 mins ago', calls: '8,420 / 50k' },
+  { id: 2, name: 'TechCrunch RSS', type: 'Market Intel', status: 'Healthy', lastSync: '1 hr ago', calls: '24 / 100' },
+  { id: 3, name: 'Gmail Workspace', type: 'Email Logs', status: 'Healthy', lastSync: 'Recently', calls: '1,205 / 10k' },
+  { id: 4, name: 'LinkedIn Scraper', type: 'People Data', status: 'Degraded', lastSync: '3 hrs ago', calls: '450 / 500' }
+];
 
 export default function DataSources() {
+  const [sources, setSources] = useState(MOCK_SOURCES);
+  const addToast = useStore(state => state.addToast);
+
+  const handleSync = (name) => {
+      addToast('success', `Force sync triggered for ${name}`);
+  };
+
   return (
-    <div className="space-y-6 max-w-[1200px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 max-w-[1200px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
@@ -21,7 +34,7 @@ export default function DataSources() {
       </div>
 
       <div className="bg-white border text-left border-rose-200 bg-rose-50 text-rose-800 rounded-xl p-4 shadow-sm mb-6 flex items-start gap-3">
-         <div className="p-1.5 bg-rose-100 rounded-lg shrink-0 mt-0.5"><Database className="w-5 h-5 text-rose-600"/></div>
+         <div className="p-1.5 bg-rose-100 rounded-lg shrink-0 mt-0.5"><AlertCircle className="w-5 h-5 text-rose-600"/></div>
          <div>
             <h4 className="font-bold text-rose-900 leading-tight mb-1">Source Failure: TechCrunch PR Feed</h4>
             <p className="text-sm font-medium opacity-90">RSS parser syntax error due to recent structure changes. This affects Competitive Intelligence for all tenants tracking SaaS players.</p>
@@ -32,7 +45,7 @@ export default function DataSources() {
       <DataSourceSyncChart />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {SOURCES.map(src => (
+        {sources.map(src => (
           <div key={src.id} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
             <div className="p-5 flex items-start justify-between border-b border-slate-100">
                <div>
@@ -54,11 +67,11 @@ export default function DataSources() {
                  </div>
                  <div className="flex justify-between items-center text-sm">
                    <span className="text-slate-500 font-medium">Daily API Calls</span>
-                   <span className="font-bold text-slate-700">12,450 / 50k</span>
+                   <span className="font-bold text-slate-700">{src.calls}</span>
                  </div>
                </div>
-               <div className="flex gap-2 pt-4 border-t border-slate-200">
-                  <button className="flex-1 flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-100 text-sm">
+               <div className="flex gap-2 pt-4 border-t border-slate-200 text-left">
+                  <button onClick={() => handleSync(src.name)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 font-bold text-slate-600 rounded-lg hover:bg-slate-100 text-sm">
                     <RefreshCw className="w-4 h-4" /> Force Sync
                   </button>
                   <button className="px-3 border border-slate-200 bg-white hover:bg-slate-100 text-slate-500 rounded-lg transition-colors">

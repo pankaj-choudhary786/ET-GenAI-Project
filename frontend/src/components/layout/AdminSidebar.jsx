@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { 
   LayoutDashboard, 
   Users, 
@@ -17,6 +18,10 @@ const navItems = [
 ];
 
 export default function AdminSidebar() {
+  const { user } = useAuth();
+  const userName = user?.name || "Admin User";
+  const initials = userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
   return (
     <aside className="w-64 bg-gradient-to-b from-orange-50 via-amber-50/30 to-white border-r border-orange-100 h-screen fixed left-0 top-0 flex flex-col z-20">
       <div className="h-16 flex items-center px-6 border-b border-orange-200/50">
@@ -49,7 +54,7 @@ export default function AdminSidebar() {
         
         <div className="mt-6 text-xs font-bold text-orange-600 uppercase tracking-wider mb-2 px-3">Configuration</div>
         <NavLink
-            to="/app/settings"
+            to="/admin/settings"
             className={({ isActive }) => clsx(
               "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
               isActive 
@@ -65,10 +70,10 @@ export default function AdminSidebar() {
       <div className="p-4 border-t border-orange-200/50">
         <div className="flex items-center gap-3 px-3 py-2 bg-white rounded-xl border border-orange-100 shadow-sm hover:shadow transition-shadow cursor-pointer">
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF7A59] to-amber-500 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-            A
+            {initials}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-orange-950">System Admin</span>
+            <span className="text-sm font-bold text-orange-950">{userName}</span>
             <span className="text-xs font-medium text-orange-500">Root Access</span>
           </div>
         </div>

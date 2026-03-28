@@ -1,48 +1,48 @@
 import React from 'react';
-import clsx from 'clsx';
+import { useStore } from '../../store/useStore';
 
-export default function Avatar({ src, name, size = 'md', className }) {
-  const getInitials = (n) => {
-    if (!n) return '?';
-    const parts = n.split(' ');
-    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    return n.slice(0, 2).toUpperCase();
-  };
+const colors = [
+  'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500',
+  'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'
+];
 
-  const getBackgroundColor = (n) => {
-    const colors = [
-      'bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 
-      'bg-rose-500', 'bg-emerald-500', 'bg-amber-500'
-    ];
-    let hash = 0;
-    for (let i = 0; i < (n || '').length; i++) {
-      hash = n.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
+function getHashColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  hash = Math.abs(hash);
+  return colors[hash % colors.length];
+}
 
-  const sizes = {
+export default function Avatar({ user, size = 'md' }) {
+  if (!user) return null;
+
+  const sizeClasses = {
     sm: 'w-8 h-8 text-xs',
     md: 'w-10 h-10 text-sm',
-    lg: 'w-12 h-12 text-base',
-    xl: 'w-16 h-16 text-lg'
-  };
+    lg: 'w-12 h-12 text-base'
+  }[size] || 'w-10 h-10 text-sm';
 
-  const sizeClass = sizes[size] || sizes.md;
-
-  if (src) {
+  if (user.avatar) {
     return (
       <img 
-        src={src} 
-        alt={name} 
-        className={clsx(`${sizeClass} rounded-full object-cover shadow-sm`, className)} 
+        src={user.avatar} 
+        alt={user.name} 
+        className={`${sizeClasses} rounded-full object-cover`} 
       />
     );
   }
 
+  const parts = user.name ? user.name.split(' ') : ['U'];
+  const first = parts[0][0] || '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  const initials = (first + last).toUpperCase();
+  const bgColor = getHashColor(user.name || 'User');
+
   return (
-    <div className={clsx(`${sizeClass} rounded-full flex items-center justify-center text-white font-medium shadow-sm`, getBackgroundColor(name), className)}>
-      {getInitials(name)}
+    <div className={`${sizeClasses} ${bgColor} rounded-full flex items-center justify-center text-white font-semibold shadow-sm`}>
+      {initials}
     </div>
   );
 }

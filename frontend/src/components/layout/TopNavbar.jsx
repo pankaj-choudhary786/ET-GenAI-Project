@@ -1,9 +1,28 @@
-import React, { useState } from 'react';
-import { Bell, Search, LogOut, Settings, User } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Bell, Search, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import Avatar from '../ui/Avatar';
+import { useStore } from '../../store/useStore';
+import { Link } from 'react-router-dom';
 
-export default function TopNavbar({ title = "Dashboard", userName = "John Doe" }) {
+export default function TopNavbar({ title = "Dashboard" }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const user = useStore(state => state.user);
+  const logout = useStore(state => state.logout);
+  const dropdownRef = useRef(null);
+  
+  const userName = user?.name || "User";
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownRef]);
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-10 w-full">
@@ -24,27 +43,32 @@ export default function TopNavbar({ title = "Dashboard", userName = "John Doe" }
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
         </button>
         
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <button 
             className="flex items-center gap-2 cursor-pointer focus:outline-none"
             onClick={() => setDropdownOpen(!dropdownOpen)}
           >
-            <Avatar name={userName} size="sm" />
+            <Avatar user={user} size="sm" />
           </button>
           
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-slate-100 z-50">
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-slate-200 z-[9999]">
               <div className="px-4 py-2 border-b border-slate-100">
                 <p className="text-sm font-medium text-slate-800">{userName}</p>
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
               </div>
+              
+              <Link to="/app/settings" className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer">
+                <UserIcon className="w-4 h-4" /> Profile Settings
+              </Link>
               <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-                <User className="w-4 h-4" /> Profile
-              </button>
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-                <Settings className="w-4 h-4" /> Settings
+                <Settings className="w-4 h-4" /> Help
               </button>
               <div className="border-t border-slate-100 my-1"></div>
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors">
+              <button 
+                onClick={logout}
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+                >
                 <LogOut className="w-4 h-4" /> Logout
               </button>
             </div>

@@ -8,7 +8,9 @@ import AdminLayout from './layouts/AdminLayout';
 import SignUp from './pages/public/SignUp';
 import SignIn from './pages/public/SignIn';
 import ForgotPassword from './pages/public/ForgotPassword';
-import AuthCallback from './pages/public/AuthCallback';
+import AuthCallback from './pages/AuthCallback'; // Updated import
+import ToastProvider from './components/Toast'; // Added
+import { ProtectedRoute } from './components/ProtectedRoute'; // Added
 
 // App Views
 import UserDashboard from './pages/app/UserDashboard';
@@ -25,37 +27,43 @@ import Users from './pages/admin/Users';
 import AgentActivity from './pages/admin/AgentActivity';
 import DataSources from './pages/admin/DataSources';
 
+import AdminSettings from './pages/admin/AdminSettings';
+
 import './App.css';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
+    <>
+      <ToastProvider />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Landing />} />
 
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
-        <Route path="/app" element={<UserLayout />}>
-          <Route path="dashboard" element={<UserDashboard />} />
-          <Route path="prospecting" element={<Prospecting />} />
-          <Route path="pipeline" element={<Pipeline />} />
-          <Route path="retention" element={<Retention />} />
-          <Route path="battlecards" element={<Battlecards />} />
-          <Route path="outbox" element={<Outbox />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
+          <Route path="/app" element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
+            <Route path="dashboard" element={<UserDashboard />} />
+            <Route path="prospecting" element={<Prospecting />} />
+            <Route path="pipeline" element={<Pipeline />} />
+            <Route path="retention" element={<Retention />} />
+            <Route path="battlecards" element={<Battlecards />} />
+            <Route path="outbox" element={<Outbox />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
 
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<Users />} />
-          <Route path="agents" element={<AgentActivity />} />
-          <Route path="data-sources" element={<DataSources />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+          <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminLayout /></ProtectedRoute>}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<Users />} />
+            <Route path="agents" element={<AgentActivity />} />
+            <Route path="data-sources" element={<DataSources />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 

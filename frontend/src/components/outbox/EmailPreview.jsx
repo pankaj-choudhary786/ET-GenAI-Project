@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send, Edit3, RefreshCw, Trash2, Info, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import clsx from 'clsx';
 
 export default function EmailPreview({ draft, onApprove, onDiscard }) {
   const [isEditing, setIsEditing] = useState(false);

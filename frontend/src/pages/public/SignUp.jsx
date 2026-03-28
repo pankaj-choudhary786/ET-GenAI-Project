@@ -4,35 +4,53 @@ import AuthCard from '../../components/auth/AuthCard';
 import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
 import InputField from '../../components/auth/InputField';
 import PasswordInput from '../../components/auth/PasswordInput';
+import AlertBanner from '../../components/auth/AlertBanner';
+import { useStore } from '../../store/useStore';
+import client from '../../api/client';
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const setUser = useStore(state => state.setUser);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirm: '', terms: false });
-  const [errors, setErrors] = useState({});
+  const [errorBanner, setErrorBanner] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const validate = () => {
-    let newErrors = {};
-    if (!formData.name) newErrors.name = "Full name is required";
-    if (!formData.email) newErrors.email = "Work email is required";
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
-    if (!formData.password) newErrors.password = "Password is required";
-    else if (formData.password.length < 8) newErrors.password = "Must be at least 8 characters";
-    if (formData.password !== formData.confirm) newErrors.confirm = "Passwords do not match";
-    if (!formData.terms) newErrors.terms = "You must agree to the terms";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleBlur = (field) => {
-    validate();
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validate()) {
-      // Simulate API call
-      setTimeout(() => navigate('/app/dashboard'), 800);
+    if (!formData.name || !formData.email || !formData.password || !formData.confirm) {
+        setErrorBanner('Please fill in all fields.');
+        return;
     }
+    if (formData.password !== formData.confirm) {
+        setErrorBanner('Passwords do not match.');
+        return;
+    }
+    if (!formData.terms) {
+        setErrorBanner('You must agree to the Terms of Service.');
+        return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await client.post('/api/auth/signup', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      });
+
+      localStorage.setItem('salesai_token', data.token);
+      setUser(data.user);
+
+      navigate('/app/dashboard');
+    } catch (err) {
+      setErrorBanner(err.response?.data?.message || 'An error occurred during signup.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = () => {
+    window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/google`;
   };
 
   return (
@@ -41,7 +59,10 @@ export default function SignUp() {
       subtitle="Your AI sales agent is ready to work."
     >
       <form onSubmit={handleSubmit} className="space-y-5">
-        <GoogleAuthButton onClick={() => navigate('/auth/callback')} />
+        
+        <AlertBanner message={errorBanner} />
+
+        <GoogleAuthButton onClick={handleGoogleAuth} />
         
         <div className="relative flex items-center py-2">
           <div className="flex-grow border-t border-slate-200"></div>
@@ -53,9 +74,10 @@ export default function SignUp() {
           label="Full Name" 
           placeholder="Jane Doe" 
           value={formData.name}
-          onChange={(e) => setFormData({...formData, name: e.target.value})}
-          onBlur={() => handleBlur('name')}
-          error={errors.name}
+          onChange={(e) => {
+              setFormData({...formData, name: e.target.value});
+              if(errorBanner) setErrorBanner('');
+          }}
         />
         
         <InputField 
@@ -63,27 +85,30 @@ export default function SignUp() {
           type="email"
           placeholder="jane@company.com" 
           value={formData.email}
-          onChange={(e) => setFormData({...formData, email: e.target.value})}
-          onBlur={() => handleBlur('email')}
-          error={errors.email}
+          onChange={(e) => {
+              setFormData({...formData, email: e.target.value});
+              if(errorBanner) setErrorBanner('');
+          }}
         />
         
         <PasswordInput 
           label="Password" 
           placeholder="••••••••" 
           value={formData.password}
-          onChange={(e) => setFormData({...formData, password: e.target.value})}
-          onBlur={() => handleBlur('password')}
-          error={errors.password}
+          onChange={(e) => {
+              setFormData({...formData, password: e.target.value});
+              if(errorBanner) setErrorBanner('');
+          }}
         />
         
         <PasswordInput 
           label="Confirm Password" 
           placeholder="••••••••" 
           value={formData.confirm}
-          onChange={(e) => setFormData({...formData, confirm: e.target.value})}
-          onBlur={() => handleBlur('confirm')}
-          error={errors.confirm}
+          onChange={(e) => {
+              setFormData({...formData, confirm: e.target.value});
+              if(errorBanner) setErrorBanner('');
+          }}
         />
 
         <div className="flex items-start gap-3 pt-1">
@@ -92,7 +117,10 @@ export default function SignUp() {
               id="terms" 
               type="checkbox" 
               checked={formData.terms}
-              onChange={(e) => setFormData({...formData, terms: e.target.checked})}
+              onChange={(e) => {
+                  setFormData({...formData, terms: e.target.checked});
+                  if(errorBanner) setErrorBanner('');
+              }}
               className="w-4 h-4 rounded border-slate-300 text-[#00A4BD] focus:ring-[#00A4BD]"
             />
           </div>
@@ -100,13 +128,13 @@ export default function SignUp() {
             I agree to the <a href="#" className="font-semibold text-[#00A4BD] hover:underline">Terms of Service</a> and <a href="#" className="font-semibold text-[#00A4BD] hover:underline">Privacy Policy</a>
           </label>
         </div>
-        {errors.terms && <span className="text-xs text-rose-500 font-medium">{errors.terms}</span>}
         
         <button 
           type="submit" 
-          className="w-full py-3 px-4 bg-[#FF7A59] hover:bg-[#ff6a45] text-white font-bold rounded-lg shadow-sm shadow-[#ff7a59]/20 transition-all focus:ring-4 focus:ring-[#ff7a59]/30"
+          disabled={loading}
+          className="w-full py-3 px-4 bg-[#FF7A59] hover:bg-[#ff6a45] disabled:opacity-50 text-white font-bold rounded-lg shadow-sm shadow-[#ff7a59]/20 transition-all focus:ring-4 focus:ring-[#ff7a59]/30"
         >
-          Create account
+          {loading ? 'Creating...' : 'Create account'}
         </button>
         
         <p className="text-center text-sm font-medium text-slate-600">
