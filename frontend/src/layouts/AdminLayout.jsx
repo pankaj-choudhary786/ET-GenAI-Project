@@ -20,7 +20,7 @@ export default function AdminLayout() {
       
       <AdminSidebar />
       <main className="flex-1 ml-64 flex flex-col w-[calc(100%-16rem)] min-h-screen relative z-10">
-        <TopNavbar title={title} userName="Admin User" />
+        <TopNavbar title={title} />
         <div className="flex-1 p-8 overflow-y-auto relative z-10">
           <Outlet />
         </div>

@@ -12,7 +12,7 @@ export function PipelineGrowthChart({ pipelineTotal = 0 }) {
   ];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-[360px] min-h-[360px]">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-[360px] min-h-[360px] min-w-0">
       <div className="mb-4">
         <h3 className="font-bold text-slate-800 tracking-tight text-lg">AI-Driven Pipeline Growth</h3>
         <p className="text-sm text-slate-500 font-medium">Revenue generated vs autonomous projection</p>
@@ -54,7 +54,7 @@ export function AgentEfficiencyChart() {
   ];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-[360px] min-h-[360px]">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-[360px] min-h-[360px] min-w-0">
       <div className="mb-4">
         <h3 className="font-bold text-slate-800 tracking-tight text-lg">Hours Saved by AI</h3>
         <p className="text-sm text-slate-500 font-medium">Actions completed: Agents vs Humans</p>

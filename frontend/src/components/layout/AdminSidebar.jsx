@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useStore } from '../../store/useStore';
 import { 
   LayoutDashboard, 
   Users, 
   Activity, 
   Database,
-  Settings 
+  Settings,
+  LogOut 
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -18,7 +19,8 @@ const navItems = [
 ];
 
 export default function AdminSidebar() {
-  const { user } = useAuth();
+  const user = useStore(state => state.user);
+  const logout = useStore(state => state.logout);
   const userName = user?.name || "Admin User";
   const initials = userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
@@ -77,6 +79,12 @@ export default function AdminSidebar() {
             <span className="text-xs font-medium text-orange-500">Root Access</span>
           </div>
         </div>
+        <button 
+          onClick={logout}
+          className="mt-3 flex items-center gap-2 px-3 py-2 text-sm text-[#FF7A59] font-medium hover:bg-orange-50 rounded-xl w-full transition-colors border border-transparent hover:border-orange-100"
+        >
+          <LogOut className="w-4 h-4"/> Logout
+        </button>
       </div>
     </aside>
   );

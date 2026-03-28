@@ -12,7 +12,7 @@ export function UserGrowthChart() {
     { name: 'Week 7', free: 1490, pro: 1300, enterprise: 310 },
   ];
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm h-[320px] flex flex-col mb-6">
+    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm h-[320px] flex flex-col mb-6 min-w-0">
       <h3 className="font-bold text-slate-800 mb-4 text-left">Total Active Seats by Tier</h3>
       <div className="flex-1 w-full min-h-0 text-xs">
         <ResponsiveContainer width="100%" height="100%">
@@ -42,7 +42,7 @@ export function AgentSkillRadar() {
     { subject: 'Competitor Intel', A: 65, fullMark: 150 },
   ];
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm h-[320px] flex flex-col items-center">
+    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm h-[320px] flex flex-col items-center min-w-0">
       <h3 className="font-bold text-slate-800 w-full text-left">Agent Inference Map</h3>
       <div className="flex-1 w-full min-h-0 items-center justify-center -mt-2">
         <ResponsiveContainer width="100%" height="100%">
@@ -69,7 +69,7 @@ export function DataSourceSyncChart() {
     { name: 'Sun', success: 3490, failed: 430 },
   ];
   return (
-     <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm h-[320px] flex flex-col mb-6">
+     <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm h-[320px] flex flex-col mb-6 min-w-0">
       <h3 className="font-bold text-slate-800 mb-4 text-left">Ingestion Flow & Fallbacks</h3>
       <div className="flex-1 w-full min-h-0 text-xs">
         <ResponsiveContainer width="100%" height="100%">

@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Activity, ShieldAlert, CheckCircle2, Clock, Filter, AlertTriangle, Download } from 'lucide-react';
 import clsx from 'clsx';
 import { AgentSkillRadar } from '../../components/charts/AdminCharts';
-import { useAgentFeed } from '../../hooks/useAgentFeed';
+import { useAdminAgentLog } from '../../hooks/useAdminAgentLog';
 import { useAdminStats } from '../../hooks/useAdminStats';
 
 export default function AgentActivity() {
   const [filter, setFilter] = useState('');
-  const { logs, loading } = useAgentFeed(filter ? 1 : 1, 50, filter); // simplistic pagination 
+  const [page, setPage] = useState(1);
+  const { logs, pagination, loading } = useAdminAgentLog(page, 50, filter);
   const { stats } = useAdminStats();
 
   return (
