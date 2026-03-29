@@ -38,10 +38,10 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          <div className="lg:col-span-2">
-            <ActivityBarChart actions={stats?.totalAgentActions || 0} />
+            <ActivityBarChart data={stats?.activityTrends} />
          </div>
          <div className="lg:col-span-1">
-            <DonutChart dataSourceBreakdown={stats?.dataSourceBreakdown} />
+            <DonutChart data={stats?.dataSourceBreakdown} />
          </div>
       </div>
 

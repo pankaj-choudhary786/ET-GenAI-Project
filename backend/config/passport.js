@@ -2,14 +2,18 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import User from '../models/User.js';
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID || 'MISSING_GOOGLE_CLIENT_ID',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'MISSING_GOOGLE_CLIENT_SECRET',
-      callbackURL: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/google/callback`,
-    },
-    async (accessToken, refreshToken, profile, done) => {
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  console.error('CRITICAL: Google OAuth credentials or secrets are missing. Google Auth will be disabled.');
+} else {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/google/callback`,
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        console.log('Google Auth Strategy processing profile for:', profile?.emails?.[0]?.value);
       try {
         let user = await User.findOne({ 
           $or: [
@@ -46,7 +50,6 @@ passport.use(
             }
           });
         }
-        
         return done(null, user);
       } catch (err) {
         return done(err, null);
@@ -54,8 +57,8 @@ passport.use(
     }
   )
 );
+}
 
-// Required for express-session integration with passport
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {

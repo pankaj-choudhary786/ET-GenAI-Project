@@ -18,31 +18,92 @@ router.use(authMiddleware, adminCheck);
 
 // GET /api/admin/stats
 router.get('/stats', asyncHandler(async (req, res) => {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  
-  const totalUsers = await User.countDocuments();
-  
-  // For 'activeUsersLast30Days', assuming any agent config or update touches user
-  // We approximate using users created or events. We will count users who have > 0 agent events last 30d
-  const activeIds = await AgentEvent.distinct('userId', { createdAt: { $gte: thirtyDaysAgo } });
-  const activeUsersLast30Days = activeIds.length;
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Core Counts (Individual queries are faster and more reliable than complex grouping for basic stats)
+    const totalUsersPromise = User.countDocuments();
+    const activeIdsPromise = AgentEvent.distinct('userId', { createdAt: { $gte: thirtyDaysAgo } });
+    const totalEmailsSentPromise = BehaviorEvent.countDocuments({ eventType: 'email_sent' });
+    const totalAgentActionsPromise = AgentEvent.countDocuments();
 
-  const totalEmailsSent = await BehaviorEvent.countDocuments({ eventType: 'email_sent' });
-  const totalAgentActions = await AgentEvent.countDocuments();
-  
-  // Hardcoded for demo
-  const dataSourceBreakdown = { hubspot: 24, salesforce: 15, gmail: 42 };
+    const [totalUsers, activeIds, totalEmailsSent, totalAgentActions] = await Promise.all([
+      totalUsersPromise, activeIdsPromise, totalEmailsSentPromise, totalAgentActionsPromise
+    ]);
+    const activeUsersLast30Days = activeIds.length;
+    
+    // Activity Trends (7-day stack) - Robust aggregation
+    let activityTrends = [];
+    try {
+      const trendsRaw = await AgentEvent.aggregate([
+        { $match: { createdAt: { $gte: sevenDaysAgo } } },
+        { 
+          $group: { 
+            _id: { 
+              day: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
+              type: "$agentType" 
+            }, 
+            count: { $sum: 1 } 
+          } 
+        },
+        { $sort: { "_id.day": 1 } }
+      ]);
 
-  res.json({
-    success: true,
-    stats: {
-      totalUsers,
-      activeUsersLast30Days,
-      totalEmailsSent,
-      totalAgentActions,
-      dataSourceBreakdown
+      const trendsMap = {};
+      trendsRaw.forEach(t => {
+        // Use JS to format labels to avoid MongoDB version-specific behavior with %a token
+        const d = new Date(t._id.day);
+        const label = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+        if (!trendsMap[label]) trendsMap[label] = { day: label };
+        trendsMap[label][t._id.type] = t.count;
+      });
+      activityTrends = Object.values(trendsMap);
+    } catch (aggError) {
+      console.error("Trends aggregation failed:", aggError);
+      activityTrends = []; // Empty fallback
     }
-  });
+
+    // Data Source Breakdown - Robust aggregation
+    let dataSourceBreakdown = [
+      { name: 'HubSpot Sync', value: 0, color: '#FF7A59' },
+      { name: 'Salesforce', value: 0, color: '#00A4BD' },
+      { name: 'Gmail SMTP', value: totalUsers || 1, color: '#f59e0b' }
+    ];
+
+    try {
+      const sourcesRaw = await User.aggregate([
+        { 
+          $group: { 
+            _id: null,
+            hubspot: { $sum: { $cond: [{ $eq: ["$connectedIntegrations.hubspot", true] }, 1, 0] } },
+            salesforce: { $sum: { $cond: [{ $eq: ["$connectedIntegrations.salesforce", true] }, 1, 0] } }
+          } 
+        }
+      ]);
+      if (sourcesRaw && sourcesRaw.length > 0) {
+        dataSourceBreakdown[0].value = sourcesRaw[0].hubspot || 0;
+        dataSourceBreakdown[1].value = sourcesRaw[0].salesforce || 0;
+      }
+    } catch (aggError) {
+      console.error("Sources aggregation failed:", aggError);
+    }
+
+    res.json({
+      success: true,
+      stats: {
+        totalUsers,
+        activeUsersLast30Days,
+        totalEmailsSent,
+        totalAgentActions,
+        activityTrends,
+        dataSourceBreakdown
+      }
+    });
+  } catch (err) {
+    console.error("Major Stats Calculation Error:", err);
+    res.status(500).json({ success: false, message: 'Failed to compile global stats', error: err.message });
+  }
 }));
 
 // GET /api/admin/users

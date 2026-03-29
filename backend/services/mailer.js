@@ -18,10 +18,14 @@ export async function sendProspectEmail(prospect, emailData, sequenceIndex) {
   const bodyWithTracking = emailData.body + trackingPixel;
   
   await transporter.sendMail({
-    from: `"${process.env.GMAIL_FROM_NAME}" <${process.env.GMAIL_USER}>`,
+    from: `"${process.env.GMAIL_FROM_NAME || 'NexusAI Sales Agent'}" <${process.env.GMAIL_USER}>`,
     to: prospect.contactEmail,
     subject: emailData.subject,
     html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${bodyWithTracking}</div>`,
+    envelope: {
+      from: process.env.GMAIL_USER,
+      to: [prospect.contactEmail]
+    }
   });
 
   await BehaviorEvent.create({
