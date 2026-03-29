@@ -3,9 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import BehaviorEvent from '../models/BehaviorEvent.js';
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  service: 'gmail',
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD
@@ -26,17 +24,16 @@ export async function sendProspectEmail(prospect, emailData, sequenceIndex) {
   const trackingPixel = `<img src="${process.env.BACKEND_URL}/track/open/${emailId}" width="1" height="1" />`;
   const bodyWithTracking = emailData.body + trackingPixel;
   
-  await transporter.sendMail({
-    from: `"${process.env.GMAIL_FROM_NAME || 'NexusAI Sales Agent'}" <${process.env.GMAIL_USER}>`,
+  const info = await transporter.sendMail({
+    from: process.env.GMAIL_USER, // The most compatible 'from' for Gmail auto-archive
     to: prospect.contactEmail,
-    bcc: process.env.GMAIL_USER, // Ensures archival in Sent/All Mail
+    bcc: process.env.GMAIL_USER,
     subject: emailData.subject,
-    html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${bodyWithTracking}</div>`,
-    envelope: {
-      from: process.env.GMAIL_USER,
-      to: [prospect.contactEmail]
-    }
+    html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${bodyWithTracking}</div>`
   });
+
+  console.log(`[SMTP] Email successfully relayed for ${prospect.contactEmail}. Response: ${info.response}`);
+  console.log(`[SMTP] Google Message-ID: ${info.messageId}`);
 
   await BehaviorEvent.create({
     userId: prospect.userId,
