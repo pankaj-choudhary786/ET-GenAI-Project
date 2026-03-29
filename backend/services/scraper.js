@@ -6,34 +6,84 @@ import * as cheerio from 'cheerio';
  * In a real-world scenario, you would use a headless browser like Puppeteer/Playwright 
  * or a specialized SERP API (Serper.dev, BrightData) to bypass bot detection.
  */
+/**
+ * Uses Serper.dev to find recent news and signals for a competitor.
+ */
 export const scrapeCompetitorSignals = async (companyName) => {
   try {
-    console.log(`[Scraper] Initializing search for ${companyName}`);
+    const apiKey = process.env.SERPER_API_KEY;
+    if (!apiKey) throw new Error("SERPER_API_KEY missing");
+
+    console.log(`[Scraper] Searching Serper for ${companyName} signals...`);
     
-    // Logic: In a demo, we simulate web scraping by hitting a generic search or using a curated mock 
-    // to provide realistic-looking competitive signals. For a real app, this would be a refined 
-    // Google/Bing search query followed by page content extraction.
+    const { data } = await axios.post('https://google.serper.dev/news', {
+      q: `${companyName} product update pricing shift`,
+      num: 5
+    }, {
+      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' }
+    });
 
-    const mockedSignals = [
-      `${companyName} recently mentioned in a TechCrunch feature regarding Q3 growth strategies.`,
-      `Product update detected on ${companyName} website: New enterprise tier pricing launched.`,
-      `Key executive departure: Head of Product left ${companyName} for a stealth startup.`,
-      `${companyName} expanding operations into EMEA according to recent job postings.`,
-      `Public feedback on G2 indicates users at ${companyName} are frustrated with recent UI changes.`
-    ];
+    if (data.news && data.news.length > 0) {
+      return data.news.map(item => `${item.title}: ${item.snippet}`);
+    }
 
-    // Simulating a real fetch delay
-    await new Promise(r => setTimeout(r, 1500));
-
-    // Return 3 random signals to make it look "fresh"
-    return mockedSignals
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 3);
-
+    return ["No recent news signals found via search."];
   } catch (error) {
-    console.error(`[Scraper Error] Failed to fetch signals for ${companyName}:`, error.message);
-    return [];
+    console.error(`[Scraper Error] Serper search failed for ${companyName}:`, error.message);
+    return ["Error fetching real-time signals."];
   }
+};
+
+/**
+ * Uses Firecrawl to scrape a specific URL for deep content.
+ */
+export const scrapePageContent = async (url) => {
+    try {
+        const apiKey = process.env.FIRECRAWL_API_KEY;
+        if (!apiKey) throw new Error("FIRECRAWL_API_KEY missing");
+
+        console.log(`[Scraper] Firecrawling ${url}...`);
+
+        const { data } = await axios.post('https://api.firecrawl.dev/v1/scrape', {
+            url: url,
+            formats: ["markdown"]
+        }, {
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
+        });
+
+        if (data.success && data.data && data.data.markdown) {
+            return data.data.markdown;
+        }
+        
+        return "Failed to extract clean markdown content.";
+    } catch (error) {
+        console.error(`[Scraper Error] Firecrawl failed for ${url}:`, error.message);
+        return "Error performing deep scrape.";
+    }
+};
+
+/**
+ * Searches for companies matching an ICP using Serper.dev.
+ */
+export const searchCompanies = async (query) => {
+    try {
+        const apiKey = process.env.SERPER_API_KEY;
+        if (!apiKey) throw new Error("SERPER_API_KEY missing");
+
+        console.log(`[Scraper] Searching companies for query: ${query}`);
+
+        const { data } = await axios.post('https://google.serper.dev/search', {
+            q: query,
+            num: 10
+        }, {
+            headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' }
+        });
+
+        return data.organic || [];
+    } catch (error) {
+        console.error(`[Scraper Error] Serper search failed:`, error.message);
+        return [];
+    }
 };
 
 /**

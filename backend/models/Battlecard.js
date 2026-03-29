@@ -21,15 +21,16 @@ const battlecardSchema = new mongoose.Schema({
   sections: {
     overview: String,
     theirPitch: String,
-    weaknesses: [String],
-    ourStrengths: [String],
+    theirWeaknesses: [String],
+    ourCounterPositioning: [String],
     objectionHandlers: [objectionSchema],
     pricing: String,
     targetCustomer: String
   },
-  marketSignals: [marketSignalSchema],
+  recentSignals: [marketSignalSchema],
   activeDeals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Deal' }], // deals where this competitor is mentioned
   embeddingHash: String, // MD5 hash of scraped content for diff detection
+  embedding: [Number], // For Atlas Vector Search
   lastScraped: Date,
   freshness: { type: String, enum: ['fresh', 'stale', 'outdated'], default: 'fresh' }
 }, { timestamps: true });

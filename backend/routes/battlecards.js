@@ -35,7 +35,20 @@ router.get('/:competitor', asyncHandler(async (req, res) => {
   res.json({ success: true, battlecard });
 }));
 
-// POST /api/battlecards/refresh/:competitor
+// POST /api/battlecards/refresh/all
+router.post('/refresh/all', asyncHandler(async (req, res) => {
+  const User = (await import('../models/User.js')).default;
+  const user = await User.findById(req.user.userId);
+  const competitors = user?.agentPreferences?.competitive?.trackedCompetitors || ['Salesforce', 'HubSpot', 'Pipedrive'];
+  
+  for (const comp of competitors) {
+    runCompetitiveAgent(comp, req.user.userId).catch(console.error);
+  }
+  
+  res.json({ success: true, message: `Competitive intelligence refresh started for ${competitors.length} competitors.` });
+}));
+
+// POST /refresh/:competitor
 router.post('/refresh/:competitor', asyncHandler(async (req, res) => {
   const competitor = decodeURIComponent(req.params.competitor);
   

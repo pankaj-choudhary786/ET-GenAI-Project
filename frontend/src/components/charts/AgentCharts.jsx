@@ -14,7 +14,7 @@ export function PipelineStageChart() {
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col min-h-[380px] h-full">
       <h3 className="font-bold text-slate-800 tracking-tight text-left mb-4">Sales Pipeline by Stage</h3>
       <div className="h-[300px] w-full relative">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={300}>
           <BarChart data={data} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
             <XAxis type="number" hide />
@@ -46,7 +46,7 @@ export function LeadSourcesChart() {
       <h3 className="font-bold text-slate-800 tracking-tight text-left mb-4">Lead Sources</h3>
       <div className="h-[300px] w-full relative flex flex-col items-center justify-between">
         <div className="w-full h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
                 data={data}
@@ -110,7 +110,7 @@ export function NetRevenueRetentionChart() {
          </div>
       </div>
       <div className="flex-1 w-full relative">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorNRR" x1="0" y1="0" x2="0" y2="1">

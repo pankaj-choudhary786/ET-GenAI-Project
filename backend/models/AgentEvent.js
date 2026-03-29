@@ -4,7 +4,7 @@ const agentEventSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   agentType: {
     type: String,
-    enum: ['prospecting', 'deal_intel', 'retention', 'competitive'],
+    enum: ['prospecting', 'deal_intel', 'retention', 'competitive', 'manual_override'],
     required: true
   },
   action: String, // short summary: "Found 4 new ICP matches", "Flagged Acme Corp (risk 82)"

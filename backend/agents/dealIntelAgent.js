@@ -13,6 +13,9 @@ export async function runDealIntelAgent(userId) {
   const agentEventId = await logAgentStart('deal_intel', userId);
   try {
     // Step 1: Fetch all open deals for this user
+    const user = await User.findById(userId);
+    const hubspotKey = user.integrations?.hubspot?.apiKey || process.env.HUBSPOT_API_KEY;
+
     const deals = await Deal.find({ 
       userId, 
       stage: { $nin: ['Closed Won', 'Closed Lost'] } 
@@ -21,18 +24,20 @@ export async function runDealIntelAgent(userId) {
     let flaggedCount = 0;
 
     for (const deal of deals) {
-      // Step 2: Gather signals for this deal
+      // Step 2: Gather real signals from HubSpot if possible
+      let crmNotes = [];
+      if (deal.hubspotId && hubspotKey) {
+          const { getHubSpotEngagementNotes } = await import('../services/hubspot.js');
+          crmNotes = await getHubSpotEngagementNotes(hubspotKey, deal.hubspotId);
+      }
+
       const daysSinceActivity = Math.floor((Date.now() - new Date(deal.lastActivityAt || deal.createdAt)) / (1000 * 60 * 60 * 24));
       const daysInStage = Math.floor((Date.now() - new Date(deal.stageEnteredAt || deal.createdAt)) / (1000 * 60 * 60 * 24));
       
-      const recentEvents = await BehaviorEvent.find({ 
-        dealId: deal._id 
-      }).sort({ createdAt: -1 }).limit(10);
-
       const signals = [];
       if (daysSinceActivity > 10) signals.push(`No activity for ${daysSinceActivity} days`);
       if (daysInStage > 21) signals.push(`Stuck in ${deal.stage} stage for ${daysInStage} days`);
-      if (recentEvents.length === 0) signals.push('No engagement events recorded');
+      if (crmNotes.length > 0) signals.push(`Analyzing ${crmNotes.length} recent CRM notes for competitor mentions or sentiment drop.`);
 
       // Step 3: Use Claude to assess risk and generate recovery
       const riskAssessment = await callClaude(
@@ -75,8 +80,12 @@ export async function runDealIntelAgent(userId) {
       }
     }
 
-    await logAgentSuccess('deal_intel', userId, agentEventId, 
-      `Scanned ${deals.length} deals. Flagged ${flaggedCount} as high risk.`);
+    const summaryMsg = `Scan Complete: Analyzed ${deals.length} active deals. Flagged ${flaggedCount} high-risk accounts requiring immediate recovery action.`;
+    const User = (await import('../models/User.js')).default;
+    await User.findByIdAndUpdate(userId, { lastAgentSummary: summaryMsg });
+    await logAgentSuccess('deal_intel', userId, agentEventId, summaryMsg);
+    
+    return { success: true, summary: summaryMsg, scanned: deals.length, flagged: flaggedCount };
 
   } catch (err) {
     await logAgentFailure('dealIntel', userId, agentEventId, err.message);

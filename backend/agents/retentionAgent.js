@@ -19,7 +19,7 @@ export async function runRetentionAgent(userId) {
     const accounts = await ChurnSignal.find({ userId });
 
     for (const account of accounts) {
-      // Step 1: Calculate churn score from signals
+      // Step 1: Calculate churn score from baseline signals
       let churnScore = 0;
       const loginDropPct = account.loginLast30d > 0 
         ? Math.max(0, ((account.loginLast30d - account.loginLast7d * 4) / account.loginLast30d) * 100)
@@ -28,23 +28,24 @@ export async function runRetentionAgent(userId) {
       churnScore += Math.min(40, loginDropPct * 0.4);
       churnScore += Math.min(30, account.supportTickets30d * 5);
       churnScore += Math.min(20, (1 - account.featureAdoptionPct / 100) * 20);
-      churnScore += account.sentimentScore < -0.2 ? 10 : 0;
-      churnScore = Math.min(100, Math.round(churnScore));
 
-      // Step 2: Use Claude for sentiment analysis and intervention decision
+      // Step 2: Use Claude for deep sentiment analysis of support notes
+      const notesToAnalyze = account.supportNotes?.slice(-3).join('\n\n') || "No recent notes.";
       const analysis = await callClaude(
-        `You are a customer success expert analyzing account health to prevent churn.`,
-        `Analyze this customer account and recommend an intervention.
-         Account: ${account.companyName}, Contract: $${account.contractValue},
-         Login drop: ${loginDropPct.toFixed(0)}%, Feature adoption: ${account.featureAdoptionPct}%,
-         Support tickets (30d): ${account.supportTickets30d}, Sentiment score: ${account.sentimentScore},
-         Current churn score: ${churnScore}.
+        `You are a customer success expert. Analyze account health and sentiment to prevent churn.`,
+        `Recent support tickets for ${account.companyName}:
+         ${notesToAnalyze}
+         
+         Context: Login drop: ${loginDropPct.toFixed(0)}%, Feature adoption: ${account.featureAdoptionPct}%,
+         Support tickets (30d): ${account.supportTickets30d}.
+         
          Return JSON: {
            "churnScore": 0-100,
+           "sentiment": "positive/neutral/negative/angry",
            "primaryConcern": "one sentence",
            "interventionType": "none/nudge/offer/escalate",
-           "interventionMessage": "full message to send (email or escalation brief)",
-           "offerDetails": "specific offer if applicable (e.g., 20% discount for annual upgrade)",
+           "interventionMessage": "full personalized email body (or escalation brief)",
+           "offerDetails": "e.g., 15% discount or training session",
            "urgency": "immediate/this-week/monitor"
          }`,
         true
@@ -54,21 +55,37 @@ export async function runRetentionAgent(userId) {
       const statusMap = { none: 'none', nudge: 'nudge_sent', offer: 'offer_sent', escalate: 'escalated' };
       await ChurnSignal.findByIdAndUpdate(account._id, {
         churnScore: analysis.churnScore,
-        interventionStatus: statusMap[analysis.interventionType] || 'none'
+        sentimentScore: analysis.sentiment === 'positive' ? 0.8 : analysis.sentiment === 'negative' ? -0.5 : analysis.sentiment === 'angry' ? -0.9 : 0,
+        interventionStatus: statusMap[analysis.interventionType] || 'none',
+        interventionMessage: analysis.interventionMessage
       });
 
       // Step 4: Execute intervention
+      const { sendProspectEmail } = await import('../services/mailer.js');
+      const slackWebhook = process.env.SLACK_WEBHOOK_URL;
+      const { default: axios } = await import('axios');
+
       if (analysis.interventionType === 'nudge' || analysis.interventionType === 'offer') {
-        await sendInterventionEmail(account, analysis.interventionMessage);
-      } else if (analysis.interventionType === 'escalate') {
-        await sendSlackAlert(userId, 
-          `🔴 Churn Risk: ${account.companyName} (Score: ${analysis.churnScore}%)\n${analysis.primaryConcern}\nBrief: ${analysis.interventionMessage}`
-        );
+          // Send real email to the account contact
+          await sendProspectEmail(
+              { contactEmail: account.contactEmail, contactName: account.contactName, _id: account._id, ownerId: userId },
+              { subject: `Improving your NexusAI experience`, body: analysis.interventionMessage },
+              0
+          );
+      } else if (analysis.interventionType === 'escalate' && slackWebhook) {
+          // Real Slack notification
+          await axios.post(slackWebhook, {
+              text: `🔴 Churn Risk: ${account.companyName} (Score: ${analysis.churnScore}%)\n${analysis.primaryConcern}\nIntervention: ${analysis.interventionMessage}`
+          });
       }
     }
 
-    await logAgentSuccess('retention', userId, agentEventId,
-      `Analyzed ${accounts.length} accounts. Interventions triggered for at-risk accounts.`);
+    const summaryMsg = `Retention Check Complete: Analyzed ${accounts.length} active customer accounts.`;
+    const User = (await import('../models/User.js')).default;
+    await User.findByIdAndUpdate(userId, { lastAgentSummary: summaryMsg });
+    await logAgentSuccess('retention', userId, agentEventId, summaryMsg);
+    
+    return { success: true, summary: summaryMsg, scanned: accounts.length };
 
   } catch (err) {
     await logAgentFailure('retention', userId, agentEventId, err.message);

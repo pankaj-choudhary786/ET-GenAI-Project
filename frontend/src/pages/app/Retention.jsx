@@ -161,7 +161,9 @@ export default function Retention() {
     setAgentLoading(true);
     addToast('info', 'Retention agent started — calculating churn scores...');
     try {
-      await client.post('/api/retention/scan');
+      // The scan endpoint now auto-backfills deals before scanning
+      const { data } = await client.post('/api/retention/scan');
+      addToast('info', data.message);
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
@@ -169,7 +171,13 @@ export default function Retention() {
         if (attempts >= 12) {
           clearInterval(poll);
           setAgentLoading(false);
-          addToast('success', 'Retention scan completed');
+          try {
+            const { data: profileData } = await client.get('/api/auth/profile');
+            const summary = profileData.user.lastAgentSummary || 'Retention scan completed with live churn scoring.';
+            addToast('success', summary);
+          } catch {
+            addToast('success', 'Retention scan completed');
+          }
         }
       }, 5000);
     } catch (err) {
@@ -177,6 +185,20 @@ export default function Retention() {
       addToast('error', 'Failed to scan');
     }
   };
+
+  // Auto-backfill on mount when there are no accounts
+  useEffect(() => {
+    if (!loading && accounts.length === 0) {
+      client.post('/api/retention/backfill')
+        .then(({ data }) => {
+          if (data.created > 0) {
+            refetch();
+            addToast('info', `Loaded ${data.created} active deals into Retention monitoring.`);
+          }
+        })
+        .catch(() => {}); // silent
+    }
+  }, [loading]);
 
   const handleAddAccount = async (formData) => {
     try {
@@ -302,7 +324,18 @@ export default function Retention() {
               ))}
               {accounts.length === 0 && !loading && (
                   <tr>
-                      <td colSpan="6" className="px-6 py-8 text-center text-slate-500">No account data.</td>
+                      <td colSpan="6" className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                           <ShieldAlert className="w-12 h-12 text-slate-200" />
+                           <h4 className="font-black text-slate-800 uppercase tracking-tighter">No Active Accounts</h4>
+                           <p className="text-xs text-slate-500 max-w-[240px] font-medium leading-relaxed">
+                              The **Retention Agent** needs active customers to begin churn-risk analysis. 
+                           </p>
+                           <div className="mt-4 p-2 bg-emerald-50 border border-emerald-100 rounded text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                              Agent Input Requirement: Active Deals / Closed Won
+                           </div>
+                        </div>
+                      </td>
                   </tr>
               )}
             </tbody>

@@ -82,8 +82,24 @@ export default function UserDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-2">
-        <PipelineGrowthChart pipelineTotal={pipelineTotal} />
-        <AgentEfficiencyChart />
+        <div className="relative min-h-[360px]">
+          {deals.length === 0 && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-xl text-center p-4">
+              <p className="text-sm font-black text-slate-400 uppercase tracking-tighter">No Pipeline Data</p>
+              <p className="text-xs text-slate-500 font-medium max-w-[200px]">Qualify prospects to see your growth chart here.</p>
+            </div>
+          )}
+          <PipelineGrowthChart pipelineTotal={pipelineTotal} />
+        </div>
+        <div className="relative min-h-[360px]">
+          {prospects.length === 0 && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-xl text-center p-4">
+              <p className="text-sm font-black text-slate-400 uppercase tracking-tighter">No Active Leads</p>
+              <p className="text-xs text-slate-500 font-medium max-w-[200px]">Run the Prospecting Agent to populate efficiency stats.</p>
+            </div>
+          )}
+          <AgentEfficiencyChart />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

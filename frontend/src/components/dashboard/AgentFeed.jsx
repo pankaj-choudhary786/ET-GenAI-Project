@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
+import { X } from 'lucide-react';
 import { useAgentFeed } from '../../hooks/useAgentFeed';
 
 const agentConfig = {
@@ -8,6 +9,7 @@ const agentConfig = {
   deal_intel:  { color: 'bg-rose-500 shadow-rose-500/30',    label: 'Deal Intel',   icon: '⚡' },
   retention:   { color: 'bg-emerald-500 shadow-emerald-500/30', label: 'Retention', icon: '🛡️' },
   competitive: { color: 'bg-amber-500 shadow-amber-500/30',  label: 'Competitive',  icon: '🔍' },
+  manual_override: { color: 'bg-blue-500 shadow-blue-500/30', label: 'Manual Override', icon: '👤' },
 };
 
 function timeAgo(date) {
@@ -20,9 +22,10 @@ function timeAgo(date) {
 
 export default function AgentFeed() {
   const { feed, loading } = useAgentFeed({ limit: 20 });
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   return (
-    <div className="bg-white border text-left border-slate-200 rounded-xl p-5 shadow-sm h-[420px] flex flex-col">
+    <div className="bg-white border text-left border-slate-200 rounded-xl p-5 shadow-sm h-[420px] flex flex-col relative overflow-hidden">
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100">
         <h3 className="font-bold text-slate-800 tracking-tight">Live Agent Activity</h3>
         <span className="flex h-2 w-2 relative">
@@ -72,14 +75,71 @@ export default function AgentFeed() {
                   {event.action}
                 </p>
                 {event.outputSummary && (
-                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{event.outputSummary}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed line-clamp-1">{event.outputSummary}</p>
                 )}
-                <span className="text-xs text-slate-400 font-medium">{timeAgo(event.createdAt)}</span>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-slate-400 font-medium">{timeAgo(event.createdAt)}</span>
+                  <button 
+                    onClick={() => setSelectedEvent(event)}
+                    className="text-[10px] font-black text-[#00A4BD] hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    VIEW SUMMARY
+                  </button>
+                </div>
               </div>
             </motion.div>
           );
         })}
       </div>
+
+      {/* Summary Detail Overlay */}
+      {selectedEvent && (
+        <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 p-6 flex flex-col animate-in fade-in slide-in-from-right-4">
+           <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+              <h4 className="font-black text-slate-800 uppercase tracking-tight text-sm">Agent Activity Detail</h4>
+              <button onClick={() => setSelectedEvent(null)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-5">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Action Initiated</label>
+                <p className="text-sm font-black text-slate-800 leading-tight">{selectedEvent.action}</p>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">AI Output Summary</label>
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 leading-relaxed font-medium italic">
+                  "{selectedEvent.outputSummary || "No detailed summary generated for this autonomous cycle."}"
+                </div>
+              </div>
+
+              {selectedEvent.metadata && Object.keys(selectedEvent.metadata).length > 0 && (
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">System Intelligence Signals</label>
+                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                    {Object.entries(selectedEvent.metadata).map(([k, v]) => (
+                      <div key={k} className="p-2.5 bg-white border border-slate-100 rounded-lg shadow-sm">
+                        <span className="text-slate-400 font-bold block uppercase truncate mb-0.5">{k.replace(/([A-Z])/g, ' $1')}</span>
+                        <span className="text-slate-900 font-black truncate block">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+           </div>
+
+           <div className="pt-4 mt-4 border-t border-slate-100">
+              <button 
+                onClick={() => setSelectedEvent(null)}
+                className="w-full py-2.5 bg-slate-900 text-white text-[10px] font-black rounded-xl hover:bg-black transition-all"
+              >
+                CLOSE SUMMARY
+              </button>
+           </div>
+        </div>
+      )}
     </div>
   );
 }

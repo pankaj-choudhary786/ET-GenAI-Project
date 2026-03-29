@@ -45,7 +45,7 @@ export function AgentSkillRadar() {
     <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm h-[320px] flex flex-col items-center min-w-0">
       <h3 className="font-bold text-slate-800 w-full text-left">Agent Inference Map</h3>
       <div className="flex-1 w-full min-h-0 items-center justify-center -mt-2">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={260}>
           <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
             <PolarGrid stroke="#f1f5f9" />
             <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />

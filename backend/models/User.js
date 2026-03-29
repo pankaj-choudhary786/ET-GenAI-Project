@@ -17,10 +17,15 @@ const userSchema = new mongoose.Schema({
   emailsSent: { type: Number, default: 0 },
   lastLogin: Date,
   isActive: { type: Boolean, default: true },
+  lastAgentSummary: { type: String, default: '' },
   agentPreferences: {
     prospecting: {
       autoSend: { type: Boolean, default: false },
-      minIcpScore: { type: Number, default: 60 }
+      minIcpScore: { type: Number, default: 60 },
+      industry: { type: String, default: 'B2B SaaS' },
+      companySize: { type: String, default: '100 - 500 EMP' },
+      fundingStage: { type: String, default: 'Series B or Later' },
+      location: { type: String, default: 'North America' }
     },
     dealIntel: {
       riskAlertThreshold: { type: Number, default: 70 }

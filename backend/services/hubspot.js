@@ -43,19 +43,55 @@ export async function createHubSpotContact(apiKey, contactData) {
   }
 }
 
+
 /**
  * Add a note to a HubSpot deal (used to log agent recovery plays)
  */
 export async function addHubSpotNote(apiKey, dealId, noteBody) {
   try {
-    await axios.post(`${HUBSPOT_BASE}/crm/v3/objects/notes`, {
+    const { data } = await axios.post(`${HUBSPOT_BASE}/crm/v3/objects/notes`, {
       properties: {
         hs_note_body: noteBody,
         hs_timestamp: Date.now()
-      },
-      associations: [{ to: { id: dealId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }] }]
+      }
     }, { headers: hubspotHeaders(apiKey) });
+
+    const noteId = data.id;
+
+    // Associate note with deal
+    await axios.put(`${HUBSPOT_BASE}/crm/v3/objects/notes/${noteId}/associations/deal/${dealId}/214`, 
+      {}, 
+      { headers: hubspotHeaders(apiKey) }
+    );
   } catch (error) {
     console.error('HubSpot note creation failed:', error.message);
   }
+}
+
+/**
+ * Fetch recent notes (engagements) for a HubSpot deal to analyze sentiment/signals.
+ */
+export async function getHubSpotEngagementNotes(apiKey, dealId) {
+    try {
+        // First get associations to notes
+        const { data: assocData } = await axios.get(`${HUBSPOT_BASE}/crm/v3/objects/deals/${dealId}/associations/notes`, {
+            headers: hubspotHeaders(apiKey)
+        });
+
+        const noteIds = assocData.results?.map(r => r.id) || [];
+        if (noteIds.length === 0) return [];
+
+        // Fetch note contents
+        const notes = [];
+        for (const id of noteIds.slice(0, 5)) { // Last 5 notes
+            const { data: noteData } = await axios.get(`${HUBSPOT_BASE}/crm/v3/objects/notes/${id}?properties=hs_note_body,hs_timestamp`, {
+                headers: hubspotHeaders(apiKey)
+            });
+            notes.push(noteData.properties.hs_note_body);
+        }
+        return notes;
+    } catch (error) {
+        console.error('HubSpot notes fetch failed:', error.message);
+        return [];
+    }
 }

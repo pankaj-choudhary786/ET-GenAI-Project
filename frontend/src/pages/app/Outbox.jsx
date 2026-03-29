@@ -26,20 +26,22 @@ export default function Outbox() {
     if (prospects) {
       prospects.forEach(p => {
         if (p.outreachSequences) {
-          p.outreachSequences.forEach((seq) => {
-            if (!seq.approved && !seq.sent) {
+          p.outreachSequences.forEach((seq, idx) => {
+            // Show emails that are still in 'draft' status (awaiting human approval)
+            if (seq.status === 'draft') {
               combined.push({
-                id: `prospect_${p._id}_${seq.index}`,
+                id: `prospect_${p._id}_${seq.sequence ?? idx}`,
                 type: 'prospect',
                 entityId: p._id,
-                sequenceIndex: seq.index,
+                sequenceIndex: seq.sequence ?? idx,
                 agent: 'Prospecting',
                 status: 'awaiting_approval',
-                subject: seq.subject,
-                content: seq.body,
+                subject: seq.subject || '(No subject)',
+                content: seq.body || '',
                 recipient: p.contactEmail,
                 company: p.company,
-                date: p.lastAgentActivity || p.createdAt
+                sendDelay: seq.sendDelay,
+                date: p.updatedAt || p.createdAt
               });
             }
           });
@@ -88,11 +90,15 @@ export default function Outbox() {
     setLoading(true);
     try {
       if (draft.type === 'prospect') {
-         await client.post(`/api/prospects/${draft.entityId}/approve-email`, {
+         const { data } = await client.post(`/api/prospects/${draft.entityId}/approve-email`, {
            sequenceIndex: draft.sequenceIndex,
            editedBody: editedBody || draft.content
          });
-         addToast('success', 'Prospect email approved and sent!');
+         if (data.warning) {
+           addToast('warning', `Approved — but delivery failed: ${data.warning.slice(0, 80)}`);
+         } else {
+           addToast('success', 'Email approved and sent!');
+         }
          refetchProspects();
       } else if (draft.type === 'deal') {
          await client.post(`/api/deals/${draft.entityId}/send-recovery`, {

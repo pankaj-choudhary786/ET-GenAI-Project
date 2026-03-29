@@ -3,7 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import BehaviorEvent from '../models/BehaviorEvent.js';
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD
@@ -23,10 +25,12 @@ export async function sendProspectEmail(prospect, emailData, sequenceIndex) {
   });
 
   await BehaviorEvent.create({
-    prospectId: prospect._id,
-    userId: prospect.ownerId,
+    userId: prospect.userId,
+    entityType: 'prospect',
+    entityId: prospect._id,
+    emailId,
     eventType: 'email_sent',
-    metadata: { emailId, sequenceIndex, subject: emailData.subject }
+    metadata: { subject: emailData.subject }
   });
 
   return emailId;

@@ -52,6 +52,7 @@ export default function Battlecards() {
   const [selectedId, setSelectedId] = useState(null);
   const addToast = useStore(state => state.addToast);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Set initial selected
   React.useEffect(() => {
@@ -62,17 +63,20 @@ export default function Battlecards() {
 
   const activeCompetitor = battlecards.find(c => c._id === selectedId);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-
   const handleRefresh = async () => {
      if (!activeCompetitor) return;
      try {
         setRefreshing(true);
         addToast('info', `Agent recon started for ${activeCompetitor.competitor}...`);
         await client.post(`/api/battlecards/refresh/${activeCompetitor.competitor}`);
-        setTimeout(() => {
+        setTimeout(async () => {
+          try {
+            const { data } = await client.get('/api/auth/profile');
+            addToast('success', data.user.lastAgentSummary || `Battlecard for ${activeCompetitor.competitor} updated`);
+          } catch {
+            addToast('success', `Battlecard for ${activeCompetitor.competitor} updated`);
+          }
           setRefreshing(false);
-          addToast('success', `Battlecard for ${activeCompetitor.competitor} updated`);
           refetch();
         }, 3000);
      } catch (err) {
@@ -83,9 +87,14 @@ export default function Battlecards() {
 
   const handleAddCompetitor = async (name) => {
     try {
-      addToast('info', `Starting reconnaissance on ${name}...`);
+      addToast('info', `Targeting ${name}. Launching reconnaissance agents...`);
       await client.post('/api/battlecards', { competitor: name });
-      addToast('success', `${name} battlecard generated!`);
+      try {
+        const { data } = await client.get('/api/auth/profile');
+        addToast('success', data.user.lastAgentSummary || `${name} battlecard generated!`);
+      } catch {
+        addToast('success', `${name} battlecard generated!`);
+      }
       setShowAddModal(false);
       refetch();
     } catch (err) {

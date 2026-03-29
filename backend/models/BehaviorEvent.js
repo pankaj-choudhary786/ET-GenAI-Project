@@ -7,7 +7,7 @@ const behaviorEventSchema = new mongoose.Schema({
   emailId: String, // unique ID for email tracking
   eventType: {
     type: String,
-    enum: ['email_opened', 'link_clicked', 'email_replied', 'website_visit', 'login', 'feature_used', 'support_ticket', 'email_sent']
+    enum: ['email_opened', 'link_clicked', 'email_replied', 'website_visit', 'login', 'feature_used', 'support_ticket', 'email_sent', 'prospect_qualified']
   },
   metadata: {
     subject: String,     // for email events

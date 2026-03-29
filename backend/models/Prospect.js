@@ -9,7 +9,7 @@ const outreachEmailSchema = new mongoose.Schema({
   sentAt: Date,
   openCount: { type: Number, default: 0 },
   clickCount: { type: Number, default: 0 },
-  replied: { type: Boolean, default: 0 },
+  replied: { type: Boolean, default: false },
   aiReason: String // why the AI wrote this specific email
 });
 
@@ -25,7 +25,7 @@ const prospectSchema = new mongoose.Schema({
   contactName: String,
   contactTitle: String,
   contactEmail: String,
-  contactLinkedin: String,
+  linkedinUrl: String,
   companyLinkedin: String,
   icpScore: { type: Number, min: 0, max: 100, default: 0 },
   fitReason: String, // AI explanation of why this is a good fit

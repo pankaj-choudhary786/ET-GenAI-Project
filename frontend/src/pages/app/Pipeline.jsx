@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import KPICard from '../../components/dashboard/KPICard';
 import Modal from '../../components/ui/Modal';
 import clsx from 'clsx';
-import { ShieldAlert, Crosshair, Send, Copy, CheckCircle2, AlertTriangle, ExternalLink, Activity } from 'lucide-react';
+import { ShieldAlert, Crosshair, Send, Copy, CheckCircle2, AlertTriangle, ExternalLink, Activity, Target } from 'lucide-react';
 import { PipelineStageChart } from '../../components/charts/AgentCharts';
 import { useDeals } from '../../hooks/useDeals';
 import client from '../../api/client';
@@ -180,7 +180,13 @@ export default function Pipeline() {
         if (attempts >= 12) {
           clearInterval(poll);
           setAgentLoading(false);
-          addToast('success', 'Pipeline scan completed');
+          try {
+            const { data } = await client.get('/api/auth/profile');
+            const summary = data.user.lastAgentSummary || 'Pipeline scan completed with real-time risk scoring.';
+            addToast('success', summary);
+          } catch {
+            addToast('success', 'Pipeline scan completed');
+          }
         }
       }, 5000);
     } catch (err) {
@@ -257,32 +263,41 @@ export default function Pipeline() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {deals.map((deal) => (
-                <tr 
-                  key={deal._id} 
-                  onClick={() => setSelectedDeal(deal)}
-                  className="hover:bg-slate-50 transition-colors cursor-pointer group"
-                >
-                  <td className="px-6 py-4 font-semibold text-slate-800 border-r border-slate-100">{deal.company}</td>
-                  <td className="px-6 py-4 border-r border-slate-100">
-                     <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-600 font-medium text-xs">{deal.stage}</span>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600 font-mono tracking-tight font-medium border-r border-slate-100">${deal.value?.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-slate-600 border-r border-slate-100">{deal.daysInStage || 0}</td>
-                  <td className="px-6 py-4 border-r border-slate-100">
-                    <RiskBadge score={deal.riskScore} />
-                  </td>
-                  <td className="px-6 py-4 font-medium text-slate-600 group-hover:text-slate-900 transition-colors max-w-sm truncate whitespace-nowrap overflow-hidden text-ellipsis">
-                     {deal.riskSignals && deal.riskSignals.length > 0 
-                       ? (typeof deal.riskSignals[0] === 'string' ? deal.riskSignals[0] : deal.riskSignals[0].signal)
-                       : (deal.notes ? deal.notes : 'All good')}
+              {deals.length > 0 ? (
+                deals.map((deal) => (
+                  <tr 
+                    key={deal._id} 
+                    onClick={() => setSelectedDeal(deal)}
+                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                  >
+                    <td className="px-6 py-4 font-semibold text-slate-800 border-r border-slate-100">{deal.company}</td>
+                    <td className="px-6 py-4 border-r border-slate-100">
+                       <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-600 font-medium text-xs">{deal.stage}</span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 font-mono tracking-tight font-medium border-r border-slate-100">${deal.value?.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-slate-600 border-r border-slate-100">{deal.daysInStage || 0}</td>
+                    <td className="px-6 py-4 border-r border-slate-100">
+                      <RiskBadge score={deal.riskScore} />
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-600 group-hover:text-slate-900 transition-colors max-w-sm truncate whitespace-nowrap overflow-hidden text-ellipsis">
+                       {deal.riskSignals && deal.riskSignals.length > 0 
+                         ? (typeof deal.riskSignals[0] === 'string' ? deal.riskSignals[0] : deal.riskSignals[0].signal)
+                         : (deal.notes ? deal.notes : 'All good')}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                   <td colSpan={6} className="px-6 py-20 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3 text-slate-300">
+                       <Crosshair className="w-12 h-12 text-slate-200" />
+                       <h4 className="font-black text-slate-800 uppercase tracking-tighter">No Active Deals</h4>
+                       <p className="text-xs text-slate-500 max-w-[240px] font-medium leading-relaxed">
+                          The **Deal Intel Agent** needs active deals to begin risk analysis. Use the **Prospecting Agent** first.
+                       </p>
+                    </div>
                   </td>
                 </tr>
-              ))}
-              {deals.length === 0 && !loading && (
-                  <tr>
-                      <td colSpan="6" className="px-6 py-8 text-center text-slate-500">No deals found.</td>
-                  </tr>
               )}
             </tbody>
           </table>
