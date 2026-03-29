@@ -12,6 +12,15 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// Verify connection on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('SMTP Connection Error:', error);
+  } else {
+    console.log('NexusAI SMTP Relay: Connected and Ready for Outbound Emails');
+  }
+});
+
 export async function sendProspectEmail(prospect, emailData, sequenceIndex) {
   const emailId = uuidv4();
   const trackingPixel = `<img src="${process.env.BACKEND_URL}/track/open/${emailId}" width="1" height="1" />`;
@@ -20,6 +29,7 @@ export async function sendProspectEmail(prospect, emailData, sequenceIndex) {
   await transporter.sendMail({
     from: `"${process.env.GMAIL_FROM_NAME || 'NexusAI Sales Agent'}" <${process.env.GMAIL_USER}>`,
     to: prospect.contactEmail,
+    bcc: process.env.GMAIL_USER, // Ensures archival in Sent/All Mail
     subject: emailData.subject,
     html: `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">${bodyWithTracking}</div>`,
     envelope: {
